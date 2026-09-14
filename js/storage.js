@@ -1,0 +1,255 @@
+/* Storage layer — everything lives in localStorage, on-device only. */
+
+const KEYS = {
+  habits: 'harsenal_habits',
+  logs: 'harsenal_logs',                   // { 'YYYY-MM-DD': { habitId: true } }
+  settings: 'harsenal_settings',           // { theme: 'dark' | 'light' }
+  lastSeenVersion: 'harsenal_last_seen_version',
+  freezes: 'harsenal_freezes',             // number of streak-freeze tokens available
+  frozenDates: 'harsenal_frozen_dates',    // [ 'YYYY-MM-DD', ... ] dates protected by a freeze
+  perfectDays: 'harsenal_perfect_days',    // { 'YYYY-MM-DD': bonusXP }
+  freezePrompted: 'harsenal_freeze_prompted', // [ 'YYYY-MM-DD', ... ] dates already asked about
+  achievements: 'harsenal_achievements',   // [ achievementId, ... ] unlocked
+  equippedTitle: 'harsenal_equipped_title', // achievementId or null
+  onboarded: 'harsenal_onboarded'          // 'true' once the intro has been shown
+};
+
+const DEFAULT_HABITS = [
+  { id: 'h_water', name: 'Drink water', icon: 'ic-droplet', color: '#5eb1e8', stat: 'VIT', difficulty: 'E', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
+  { id: 'h_read', name: 'Read 20 minutes', icon: 'ic-book', color: '#e8a33d', stat: 'INT', difficulty: 'D', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
+  { id: 'h_train', name: 'Train', icon: 'ic-dumbbell', color: '#7cd45e', stat: 'STR', difficulty: 'C', archived: false, frequency: { type: 'weekdays', days: [1, 2, 3, 4, 5] }, createdAt: todayISO() }
+];
+
+function todayISO(d = new Date()) {
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d - tz).toISOString().slice(0, 10);
+}
+
+function readJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    console.error('Storage read failed for', key, e);
+    return fallback;
+  }
+}
+
+function writeJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (e) {
+    console.error('Storage write failed for', key, e);
+    return false;
+  }
+}
+
+const Store = {
+  todayISO,
+
+  getHabits() {
+    let habits = readJSON(KEYS.habits, null);
+    if (habits === null) {
+      habits = DEFAULT_HABITS;
+      writeJSON(KEYS.habits, habits);
+    }
+    // Backfill fields for habits saved before stats/difficulty/archiving existed.
+    let changed = false;
+    habits.forEach(h => {
+      if (!h.stat) { h.stat = 'STR'; changed = true; }
+      if (!h.difficulty) { h.difficulty = 'E'; changed = true; }
+      if (typeof h.archived !== 'boolean') { h.archived = false; changed = true; }
+    });
+    if (changed) writeJSON(KEYS.habits, habits);
+    return habits;
+  },
+
+  // Habits currently in rotation — excludes archived ones. Use this for anything
+  // the user interacts with today (dashboard, history rows, mastery lists).
+  // Use getHabits() (full list) for historical XP/stat lookups so archiving a
+  // habit never erases XP it already earned.
+  getActiveHabits() {
+    return this.getHabits().filter(h => !h.archived);
+  },
+
+  saveHabits(habits) {
+    return writeJSON(KEYS.habits, habits);
+  },
+
+  addHabit(habit) {
+    const habits = this.getHabits();
+    habit.id = 'h_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    habit.createdAt = todayISO();
+    habit.archived = false;
+    habits.push(habit);
+    this.saveHabits(habits);
+    return habit;
+  },
+
+  updateHabit(id, updates) {
+    const habits = this.getHabits().map(h => h.id === id ? { ...h, ...updates } : h);
+    this.saveHabits(habits);
+  },
+
+  archiveHabit(id) {
+    this.updateHabit(id, { archived: true });
+  },
+
+  restoreHabit(id) {
+    this.updateHabit(id, { archived: false });
+  },
+
+  // Permanently removes a habit AND its logged history. Irreversible —
+  // archiveHabit() is the safe, reversible alternative used by the UI's
+  // default "Archive" action.
+  permanentlyDeleteHabit(id) {
+    const habits = this.getHabits().filter(h => h.id !== id);
+    this.saveHabits(habits);
+    const logs = this.getLogs();
+    Object.keys(logs).forEach(date => { delete logs[date][id]; });
+    this.saveLogs(logs);
+  },
+
+  getLogs() {
+    return readJSON(KEYS.logs, {});
+  },
+
+  saveLogs(logs) {
+    return writeJSON(KEYS.logs, logs);
+  },
+
+  isDone(habitId, dateISO) {
+    const logs = this.getLogs();
+    return !!(logs[dateISO] && logs[dateISO][habitId]);
+  },
+
+  toggle(habitId, dateISO) {
+    const logs = this.getLogs();
+    if (!logs[dateISO]) logs[dateISO] = {};
+    if (logs[dateISO][habitId]) {
+      delete logs[dateISO][habitId];
+    } else {
+      logs[dateISO][habitId] = true;
+    }
+    this.saveLogs(logs);
+    return !!logs[dateISO][habitId];
+  },
+
+  getSettings() {
+    return readJSON(KEYS.settings, { theme: null });
+  },
+
+  saveSettings(settings) {
+    return writeJSON(KEYS.settings, settings);
+  },
+
+  getLastSeenVersion() {
+    return localStorage.getItem(KEYS.lastSeenVersion);
+  },
+
+  setLastSeenVersion(v) {
+    localStorage.setItem(KEYS.lastSeenVersion, v);
+  },
+
+  /* ---- Onboarding ---- */
+  isOnboarded() {
+    return localStorage.getItem(KEYS.onboarded) === 'true';
+  },
+  setOnboarded() {
+    localStorage.setItem(KEYS.onboarded, 'true');
+  },
+
+  /* ---- Streak freezes ---- */
+  getFreezeCount() {
+    return readJSON(KEYS.freezes, 0);
+  },
+  setFreezeCount(n) {
+    writeJSON(KEYS.freezes, Math.max(0, n));
+  },
+  getFrozenDates() {
+    return readJSON(KEYS.frozenDates, []);
+  },
+  addFrozenDate(dateISO) {
+    const dates = this.getFrozenDates();
+    if (!dates.includes(dateISO)) dates.push(dateISO);
+    writeJSON(KEYS.frozenDates, dates);
+  },
+  getFreezePrompted() {
+    return readJSON(KEYS.freezePrompted, []);
+  },
+  markFreezePrompted(dateISO) {
+    const dates = this.getFreezePrompted();
+    if (!dates.includes(dateISO)) dates.push(dateISO);
+    writeJSON(KEYS.freezePrompted, dates);
+  },
+
+  /* ---- Perfect days ---- */
+  getPerfectDays() {
+    return readJSON(KEYS.perfectDays, {});
+  },
+  setPerfectDay(dateISO, bonusXP) {
+    const days = this.getPerfectDays();
+    days[dateISO] = bonusXP;
+    writeJSON(KEYS.perfectDays, days);
+  },
+  clearPerfectDay(dateISO) {
+    const days = this.getPerfectDays();
+    delete days[dateISO];
+    writeJSON(KEYS.perfectDays, days);
+  },
+
+  /* ---- Achievements / titles ---- */
+  getAchievements() {
+    return readJSON(KEYS.achievements, []);
+  },
+  unlockAchievement(id) {
+    const list = this.getAchievements();
+    if (!list.includes(id)) { list.push(id); writeJSON(KEYS.achievements, list); return true; }
+    return false;
+  },
+  getEquippedTitle() {
+    return localStorage.getItem(KEYS.equippedTitle) || null;
+  },
+  setEquippedTitle(id) {
+    if (id) localStorage.setItem(KEYS.equippedTitle, id);
+    else localStorage.removeItem(KEYS.equippedTitle);
+  },
+
+  /* ---- Backup / restore ---- */
+  exportData() {
+    return {
+      exportedAt: new Date().toISOString(),
+      version: self.APP_VERSION,
+      habits: this.getHabits(),
+      logs: this.getLogs(),
+      settings: this.getSettings(),
+      freezes: this.getFreezeCount(),
+      frozenDates: this.getFrozenDates(),
+      perfectDays: this.getPerfectDays(),
+      achievements: this.getAchievements(),
+      equippedTitle: this.getEquippedTitle()
+    };
+  },
+
+  importData(data) {
+    if (!data || !Array.isArray(data.habits) || typeof data.logs !== 'object') {
+      throw new Error('That file doesn\u2019t look like a Hunter\u2019s Arsenal backup.');
+    }
+    this.saveHabits(data.habits);
+    this.saveLogs(data.logs);
+    if (data.settings) this.saveSettings(data.settings);
+    if (typeof data.freezes === 'number') this.setFreezeCount(data.freezes);
+    if (Array.isArray(data.frozenDates)) writeJSON(KEYS.frozenDates, data.frozenDates);
+    if (data.perfectDays) writeJSON(KEYS.perfectDays, data.perfectDays);
+    if (Array.isArray(data.achievements)) writeJSON(KEYS.achievements, data.achievements);
+    if (data.equippedTitle) this.setEquippedTitle(data.equippedTitle);
+  },
+
+  wipeAll() {
+    Object.values(KEYS).forEach(k => {
+      if (k === KEYS.settings || k === KEYS.lastSeenVersion || k === KEYS.onboarded) return; // keep theme, version marker, and onboarding state
+      localStorage.removeItem(k);
+    });
+  }
+};

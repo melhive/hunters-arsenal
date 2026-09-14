@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="shieldFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e252c"/>
+      <stop offset="100%" stop-color="#10141a"/>
+    </linearGradient>
+    <linearGradient id="rimGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e8c37a"/>
+      <stop offset="100%" stop-color="#a97f3a"/>
+    </linearGradient>
+    <linearGradient id="flameOuter" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a5ef88"/>
+      <stop offset="100%" stop-color="#5cb840"/>
+    </linearGradient>
+    <linearGradient id="flameInner" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffd27a"/>
+      <stop offset="100%" stop-color="#e8a33d"/>
+    </linearGradient>
+  </defs>
+
+  <!-- shield crest -->
+  <path d="M100,10 L156,28 C161,29.5 164,34 164,39 L164,95 C164,138 138,168 100,188
+           C62,168 36,138 36,95 L36,39 C36,34 39,29.5 44,28 Z"
+        fill="url(#shieldFill)" stroke="url(#rimGrad)" stroke-width="3.5"/>
+
+  <!-- inner bevel line -->
+  <path d="M100,24 L148,39.5 C150.5,40.3 152,42.5 152,45 L152,94
+           C152,130 132,155 100,172 C68,155 48,130 48,94 L48,45
+           C48,42.5 49.5,40.3 52,39.5 Z"
+        fill="none" stroke="#3a4750" stroke-width="1.5"/>
+
+  <!-- outer flame (arsenal power) -->
+  <path d="M100,50 C100,50 70,85 72,118 C73,140 88,158 102,158
+           C118,158 132,143 130,120 C129,108 122,100 120,108
+           C118,116 110,114 112,100 C114,82 108,64 100,50 Z"
+        fill="url(#flameOuter)"/>
+
+  <!-- inner flame (energy core) -->
+  <path d="M100,95 C100,95 85,112 86,128 C87,140 94,148 101,148
+           C109,148 116,140 115,129 C114,122 110,118 109,122
+           C108,126 104,124 105,116 C106,106 103,100 100,95 Z"
+        fill="url(#flameInner)"/>
+</svg>
