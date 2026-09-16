@@ -504,18 +504,18 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
 .hero-badge.combo { color: var(--amber); border-color: rgba(232,163,61,0.3); }
 .hero-badge.freeze { color: #6ecbe8; border-color: rgba(110,203,232,0.3); }
 
-/* ===== Difficulty chips ===== */
-.diff-picker { display: flex; gap: 6px; }
-.diff-chip {
-  flex: 1; padding: 9px 0; text-align: center; border-radius: var(--radius-sm);
-  border: 1.5px solid var(--border); background: var(--panel-raised); color: var(--text-muted);
-  font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.15s var(--ease); font-family: var(--font-display);
+/* ===== Hunter Rank badge & XP chip ===== */
+.rank-badge {
+  font-family: var(--font-display); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em;
+  padding: 2px 9px; border-radius: 20px;
+  border: 1px solid var(--rank-color, var(--border));
+  color: var(--rank-color, var(--text-muted));
+  background: var(--rank-bg, var(--panel-raised));
 }
-.diff-chip.selected { border-color: var(--diff-color, var(--accent)); background: var(--diff-bg, var(--accent-dim)); color: var(--diff-color, var(--accent)); }
-.diff-chip-hint { font-size: 0.72rem; color: var(--text-faint); margin-top: 6px; }
-.diff-badge {
-  font-family: var(--font-display); font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 4px;
-  border: 1px solid var(--diff-color, var(--border)); color: var(--diff-color, var(--text-muted));
+.xp-chip {
+  font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+  padding: 1px 7px; border-radius: 4px; color: var(--accent);
+  border: 1px solid rgba(124,212,94,0.3); background: var(--accent-dim);
 }
 
 /* ===== Profile view ===== */
@@ -619,6 +619,12 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
 .sw-type-rankup .sw-dot, .sw-type-rankup .sw-label, .sw-type-rankup .sw-icon-wrap { color: var(--amber); }
 .sw-type-rankup .sw-icon-wrap { background: var(--amber-dim); border-color: rgba(232,163,61,0.3); }
 .sw-type-rankup .sw-progress-fill { background: var(--amber); }
+
+/* Penalty notice — firm, matter-of-fact, not alarming (muted rather than bright red) */
+.sw-type-penalty { border-color: rgba(232,99,108,0.4); box-shadow: 0 0 0 1px rgba(232,99,108,0.06), 0 12px 34px rgba(0,0,0,0.45), 0 0 20px rgba(232,99,108,0.12); }
+.sw-type-penalty .sw-dot, .sw-type-penalty .sw-label, .sw-type-penalty .sw-icon-wrap { color: var(--danger); }
+.sw-type-penalty .sw-icon-wrap { background: rgba(232,99,108,0.12); border-color: rgba(232,99,108,0.3); }
+.sw-type-penalty .sw-progress-fill { background: var(--danger); }
 
 /* ===== Onboarding ===== */
 #onboarding {
@@ -736,4 +742,18 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
 /* ===== Confetti canvas ===== */
 .confetti-canvas {
   position: fixed; inset: 0; z-index: 950; pointer-events: none;
+}
+
+/* ===== Drag-to-reorder ===== */
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+  color: var(--text-faint);
+}
+.drag-handle:active { cursor: grabbing; }
+.habit-item.dragging {
+  opacity: 0.92;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.4);
+  cursor: grabbing;
+  border-color: var(--accent);
 }

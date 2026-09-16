@@ -21,6 +21,7 @@ const PRECACHE_URLS = [
   'js/storage.js',
   'js/gamification.js',
   'js/effects.js',
+  'js/sound.js',
   'js/systemwindow.js',
   'js/app.js',
   'assets/logo.svg',

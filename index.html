@@ -211,6 +211,15 @@
   <path d="M4.5 20 C4.5 15.2 7.8 12.6 12 12.6 C16.2 12.6 19.5 15.2 19.5 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
 </symbol>
 
+<symbol id="ic-grip" viewBox="0 0 24 24">
+  <circle cx="9" cy="6" r="1.6" fill="currentColor"/>
+  <circle cx="15" cy="6" r="1.6" fill="currentColor"/>
+  <circle cx="9" cy="12" r="1.6" fill="currentColor"/>
+  <circle cx="15" cy="12" r="1.6" fill="currentColor"/>
+  <circle cx="9" cy="18" r="1.6" fill="currentColor"/>
+  <circle cx="15" cy="18" r="1.6" fill="currentColor"/>
+</symbol>
+
 </defs>
 </svg>
 
@@ -296,7 +305,11 @@
           <div class="lv-label">LEVEL</div>
         </div>
         <div class="xp-info">
-          <div class="xp-top"><span id="hero-xp-label">0 / 100 XP</span><span id="hero-today-pct">0% today</span></div>
+          <div class="xp-top">
+            <span id="hero-xp-label">0 / 100 XP</span>
+            <span class="rank-badge" id="hero-rank-badge">E-Rank</span>
+            <span id="hero-today-pct">0% today</span>
+          </div>
           <div class="xp-bar-track"><div class="xp-bar-fill" id="hero-xp-fill" style="width:0%"></div></div>
           <div id="hero-title-chip" style="display:none;" class="hero-title-chip"></div>
         </div>
@@ -377,7 +390,7 @@
         <span class="bc-tr"></span><span class="bc-bl"></span>
         <div class="hunter-avatar"><svg><use href="#ic-hunter"></use></svg></div>
         <div>
-          <div class="hunter-name">Level <span id="profile-level">1</span> Hunter</div>
+          <div class="hunter-name">Level <span id="profile-level">1</span> Hunter <span class="rank-badge" id="profile-rank">E-Rank</span></div>
           <div class="hunter-title" id="profile-title">No title equipped</div>
         </div>
       </div>
@@ -415,6 +428,33 @@
             <div class="theme-toggle">
               <button data-theme-choice="dark" id="theme-btn-dark">Dark</button>
               <button data-theme-choice="light" id="theme-btn-light">Light</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-name">Sound Effects</div>
+              <div class="setting-desc">Chimes for check-offs, level-ups, and unlocks</div>
+            </div>
+            <div class="theme-toggle">
+              <button id="sound-btn-off">Off</button>
+              <button id="sound-btn-on">On</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Hunter Rank</h3>
+        <div class="bracket-card" style="padding:0;">
+          <span class="bc-tr"></span><span class="bc-bl"></span>
+          <div class="setting-row">
+            <div>
+              <div class="setting-name">Penalty Quests</div>
+              <div class="setting-desc">A small XP penalty for missing a scheduled quest</div>
+            </div>
+            <div class="theme-toggle">
+              <button id="penalty-btn-off">Off</button>
+              <button id="penalty-btn-on">On</button>
             </div>
           </div>
         </div>
@@ -517,11 +557,6 @@
         <select id="habit-stat"></select>
       </div>
       <div class="field">
-        <label>Difficulty rank</label>
-        <div class="diff-picker" id="diff-picker"></div>
-        <div class="diff-chip-hint">Higher rank = more XP per completion</div>
-      </div>
-      <div class="field">
         <label>Schedule</label>
         <select id="habit-frequency">
           <option value="daily">Every day</option>
@@ -575,6 +610,7 @@
 <script src="js/storage.js"></script>
 <script src="js/gamification.js"></script>
 <script src="js/effects.js"></script>
+<script src="js/sound.js"></script>
 <script src="js/systemwindow.js"></script>
 <script src="js/app.js"></script>
 </body>

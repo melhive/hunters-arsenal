@@ -17,13 +17,15 @@ A professional, offline-first habit tracker. Track daily/weekly habits, view you
 
 ## Gamification systems
 - **Stats** — every habit feeds one of five stats (STR/VIT/INT/PER/CHA), viewable on the Profile tab.
-- **Difficulty ranks (E–S)** — set per habit; higher ranks earn more XP per completion.
-- **System Window** — a HUD-style popup announces level-ups, per-habit rank-ups, perfect days, and title unlocks.
+- **Hunter Rank (E–S)** — derived automatically from your Level (thresholds in `Gamify.HUNTER_RANKS`), not manually set. Higher rank means more XP per completion. XP is snapshotted at the moment of each completion, so a later rank-up never rewrites XP already earned.
+- **System Window** — a HUD-style popup announces level-ups, Hunter Rank-ups (bigger celebration), per-habit rank-ups, perfect days, penalties, and title unlocks.
 - **Perfect Day combo** — completing every scheduled habit in a day earns bonus XP that scales with your combo streak.
-- **Streak Freezes** — earned every 7-day perfect combo (capped at 3); the app offers to spend one automatically if you miss a day.
+- **Streak Freezes** — earned every 7-day perfect combo (capped at 3); also excuses that day's Penalty Quest if spent.
+- **Penalty Quests** — missing a scheduled habit costs a small, flat, non-escalating amount of XP (capped per day). Toggleable in Settings.
 - **Titles & Achievements** — unlockable titles shown next to your level; equip one from the Profile tab.
+- **Sound** — synthesized chimes (Web Audio API, no audio files) for check-offs, level-ups, rank-ups, achievements, and penalties. Off by default; toggle in Settings.
 
-All of this is tuned in one place if you want to adjust the balance: XP values live in `Gamify.DIFFICULTIES` (gamification.js), the achievement list is `ACHIEVEMENTS` in app.js, and the perfect-day bonus constants are at the top of app.js.
+All of this is tuned in one place if you want to adjust the balance: rank thresholds/multipliers live in `Gamify.HUNTER_RANKS` (gamification.js), the achievement list is `ACHIEVEMENTS` in app.js, and the perfect-day/penalty constants are at the top of app.js.
 
 ## Deploying to GitHub Pages
 1. Create a new GitHub repo (e.g. `hunters-arsenal`) and push all these files to the root of the `main` branch (or `docs/` folder — your choice).

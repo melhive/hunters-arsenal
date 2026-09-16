@@ -12,9 +12,10 @@
   const COLORS = ['#7cd45e', '#e8a33d', '#5eb1e8', '#e8636c', '#c78ce8', '#e8d95e', '#5ee8c7', '#e88fc5'];
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const DIFF_COLORS = { E: '#8b959c', D: '#5eb1e8', C: '#7cd45e', B: '#c78ce8', A: '#e8a33d', S: '#e8636c' };
   const MAX_FREEZES = 3;
   const PERFECT_DAY_BASE_BONUS = 15;
+  const PENALTY_PER_MISS = 8;
+  const PENALTY_CAP = 30; // per day, however many habits were missed
 
   const ACHIEVEMENTS = [
     { id: 'first-blood', name: 'First Blood', desc: 'Complete your first habit', icon: 'ic-flame', check: ctx => ctx.totalCompletions >= 1 },
@@ -25,7 +26,7 @@
     { id: 'renaissance', name: 'Renaissance Hunter', desc: 'Earn XP in all 5 stats', icon: 'ic-star', check: ctx => ctx.statsCovered >= 5 },
     { id: 'perfectionist', name: 'Perfectionist', desc: '10 perfect days total', icon: 'ic-flame', check: ctx => ctx.perfectDaysCount >= 10 },
     { id: 'guardian', name: 'Guardian', desc: 'Use a streak freeze', icon: 'ic-shield', check: ctx => ctx.frozenDatesCount >= 1 },
-    { id: 's-rank-hunter', name: 'S-Rank Hunter', desc: 'Complete an S-Rank habit', icon: 'ic-trophy', check: ctx => ctx.hasSRankCompletion }
+    { id: 's-rank-hunter', name: 'S-Rank Hunter', desc: 'Reach S-Rank', icon: 'ic-trophy', check: ctx => ctx.hunterRank === 'S' }
   ];
 
   let state = {
@@ -36,7 +37,6 @@
     selectedColor: COLORS[0],
     selectedDays: [1, 2, 3, 4, 5],
     selectedStat: Gamify.DEFAULT_STAT,
-    selectedDifficulty: Gamify.DEFAULT_DIFFICULTY,
     animateDashboard: false,
     animateProfile: false
   };
@@ -121,8 +121,21 @@
     applyTheme(theme);
   }
 
+  /* ---------- Sound ---------- */
+  function initSound() {
+    const settings = Store.getSettings();
+    if (typeof Sound !== 'undefined') Sound.setEnabled(settings.sound === true);
+  }
+  function setSoundEnabled(v) {
+    const settings = Store.getSettings();
+    settings.sound = v;
+    Store.saveSettings(settings);
+    if (typeof Sound !== 'undefined') Sound.setEnabled(v);
+  }
+
   /* ---------- Navigation ---------- */
   function switchView(view) {
+    if (typeof Sound !== 'undefined') Sound.click();
     state.view = view;
     $all('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
     $all('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
@@ -145,31 +158,51 @@
     const habits = Store.getHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
-    const xp = Gamify.totalXP(logs, habits, perfectDays);
+    const penalties = Store.getPenalties();
+    const xp = Gamify.totalXP(logs, perfectDays, penalties);
+    const level = Gamify.levelFromXP(xp).level;
+    const hunterRank = Gamify.rankForLevel(level).id;
     const habit = habits.find(h => h.id === habitId);
-    const rank = habit ? Gamify.rankFor(Gamify.countCompletions(habit.id, logs)) : null;
-    return { level: Gamify.levelFromXP(xp).level, rankName: rank ? rank.name : null };
+    const habitRank = habit ? Gamify.rankFor(Gamify.countCompletions(habit.id, logs)) : null;
+    return { xp, level, hunterRank, habitRankName: habitRank ? habitRank.name : null };
   }
 
   // The single entry point for marking a habit done/undone anywhere in the app.
-  // Handles XP/level, per-habit rank-ups, the perfect-day combo, streak freezes
-  // earned, and achievement unlocks — all via queued System Window popups.
+  // Handles XP/level, Hunter Rank-ups, per-habit mastery rank-ups, the
+  // perfect-day combo, streak freezes earned, and achievement unlocks — all
+  // via queued System Window popups (+ sound, when enabled).
   function performToggle(habitId, dateISO) {
     const before = snapshot(habitId);
-    const nowDone = Store.toggle(habitId, dateISO);
+    const wasDone = Store.isDone(habitId, dateISO);
+    // XP is snapshotted using the rank BEFORE this completion — see
+    // Gamify.xpForCompletion's comment on why this must never be recomputed later.
+    const xpValue = wasDone ? undefined : Gamify.xpForCompletion(before.level);
+    const nowDone = Store.toggle(habitId, dateISO, xpValue);
+
     const habits = Store.getHabits();
     const logs = Store.getLogs();
     const habit = habits.find(h => h.id === habitId);
     const after = snapshot(habitId);
 
     if (nowDone && habit) {
-      if (after.level > before.level) {
+      if (typeof Sound !== 'undefined') Sound.checkOff();
+
+      if (after.hunterRank !== before.hunterRank) {
+        const rankInfo = Gamify.HUNTER_RANKS.find(r => r.id === after.hunterRank);
         SystemWindow.show({
-          type: 'levelup', icon: 'ic-star', title: `LEVEL UP! → LV ${after.level}`,
+          type: 'rankup', icon: 'ic-trophy', title: `RANK UP! \u2192 ${rankInfo.label}`,
+          lines: [`You are now ${rankInfo.label}. Every quest is worth more XP.`]
+        });
+        if (typeof Sound !== 'undefined') Sound.rankUp();
+      } else if (after.level > before.level) {
+        SystemWindow.show({
+          type: 'levelup', icon: 'ic-star', title: `LEVEL UP! \u2192 LV ${after.level}`,
           lines: [`Your hunter reached Level ${after.level}.`]
         });
+        if (typeof Sound !== 'undefined') Sound.levelUp();
       }
-      if (after.rankName && after.rankName !== before.rankName) {
+
+      if (after.habitRankName && after.habitRankName !== before.habitRankName) {
         const rank = Gamify.rankFor(Gamify.countCompletions(habit.id, logs));
         SystemWindow.show({
           type: 'rankup', icon: rank.icon, title: `${escapeHTML(habit.name)}: ${rank.name}`,
@@ -178,6 +211,7 @@
       }
       handlePerfectDayCheck(dateISO);
     } else if (!nowDone) {
+      if (typeof Sound !== 'undefined') Sound.uncheck();
       // Unchecking might undo a day that was previously marked perfect.
       const perfectDays = Store.getPerfectDays();
       if (perfectDays[dateISO] !== undefined && !Gamify.isPerfectDay(Store.getActiveHabits(), logs, dateISO)) {
@@ -218,12 +252,14 @@
       type: 'rankup', icon: 'ic-flame', title: 'PERFECT DAY!',
       lines
     });
+    if (typeof Sound !== 'undefined') Sound.perfectDay();
   }
 
   function checkAchievements() {
     const habits = Store.getHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
+    const penalties = Store.getPenalties();
     const unlocked = Store.getAchievements();
 
     const totalCompletions = Object.values(logs).reduce((s, day) => s + Object.keys(day).length, 0);
@@ -233,9 +269,10 @@
     const statTotals = Gamify.statTotals(logs, habits);
     const statsCovered = Object.values(statTotals).filter(v => v > 0).length;
     const frozenDatesCount = Store.getFrozenDates().length;
-    const hasSRankCompletion = habits.some(h => h.difficulty === 'S' && Gamify.countCompletions(h.id, logs) > 0);
+    const currentXP = Gamify.totalXP(logs, perfectDays, penalties);
+    const hunterRank = Gamify.rankForLevel(Gamify.levelFromXP(currentXP).level).id;
 
-    const ctx = { totalCompletions, perfectDaysCount, maxLongestStreak, hasEliteRank, statsCovered, frozenDatesCount, hasSRankCompletion };
+    const ctx = { totalCompletions, perfectDaysCount, maxLongestStreak, hasEliteRank, statsCovered, frozenDatesCount, hunterRank };
 
     ACHIEVEMENTS.forEach(a => {
       if (unlocked.includes(a.id)) return;
@@ -246,6 +283,7 @@
           type: 'rankup', icon: a.icon, title: 'TITLE UNLOCKED',
           lines: [`"${a.name}" — ${a.desc}`]
         });
+        if (typeof Sound !== 'undefined') Sound.achievement();
       }
     });
   }
@@ -269,10 +307,51 @@
       type: 'default', icon: 'ic-shield', title: 'Streak Freeze Available',
       lines: ['You missed a perfect day yesterday.', 'Spend a freeze to protect your combo?'],
       actions: [
-        { label: 'Use Freeze', primary: true, onClick: () => { Store.addFrozenDate(yesterday); Store.setFreezeCount(Store.getFreezeCount() - 1); Store.markFreezePrompted(yesterday); renderDashboard(); showToast('Streak freeze used'); } },
+        { label: 'Use Freeze', primary: true, onClick: () => {
+          Store.addFrozenDate(yesterday);
+          Store.setFreezeCount(Store.getFreezeCount() - 1);
+          Store.markFreezePrompted(yesterday);
+          Store.setPenalty(yesterday, 0); // a freeze excuses any penalty for that day too
+          renderDashboard();
+          showToast('Streak freeze used');
+        } },
         { label: 'No thanks', onClick: () => { Store.markFreezePrompted(yesterday); } }
       ]
     });
+  }
+
+  // Missing a scheduled habit (without a streak freeze covering that day)
+  // costs a small, flat, non-escalating amount of XP — a light touch, not a
+  // spiral. Can be turned off entirely in Settings.
+  function checkDailyPenalty() {
+    const settings = Store.getSettings();
+    if (settings.penaltiesEnabled === false) return;
+
+    const today = Store.todayISO();
+    const yesterday = addDays(today, -1);
+    if (Store.getPenaltyProcessed().includes(yesterday)) return;
+    Store.markPenaltyProcessed(yesterday); // only ever evaluate a given date once
+
+    const habits = Store.getActiveHabits();
+    const logs = Store.getLogs();
+    const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, yesterday));
+    if (scheduled.length === 0) return;
+    if (Store.getFrozenDates().includes(yesterday)) return;
+
+    const missed = scheduled.filter(h => !Store.isDone(h.id, yesterday));
+    if (missed.length === 0) return;
+
+    const amount = Math.min(missed.length * PENALTY_PER_MISS, PENALTY_CAP);
+    Store.setPenalty(yesterday, amount);
+
+    setTimeout(() => {
+      SystemWindow.show({
+        type: 'penalty', icon: 'ic-ban', title: 'PENALTY QUEST ISSUED',
+        lines: [`${missed.length} quest${missed.length === 1 ? '' : 's'} went unfinished yesterday.`, `\u2212${amount} XP`]
+      });
+      if (typeof Sound !== 'undefined') Sound.penalty();
+      renderDashboard();
+    }, 900);
   }
 
   /* ---------- Dashboard ---------- */
@@ -280,21 +359,28 @@
     const today = Store.todayISO();
     $('#dashboard-date').textContent = formatDateLabel(today);
 
-    const allHabits = Store.getHabits();
     const habits = Store.getActiveHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
+    const penalties = Store.getPenalties();
     const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, today));
 
     const doneCount = scheduled.filter(h => Store.isDone(h.id, today)).length;
     const pct = scheduled.length ? Math.round((doneCount / scheduled.length) * 100) : 0;
     $('#hero-today-pct').textContent = pct + '% today';
 
-    const xp = Gamify.totalXP(logs, allHabits, perfectDays);
+    const xp = Gamify.totalXP(logs, perfectDays, penalties);
     const lvl = Gamify.levelFromXP(xp);
+    const hunterRank = Gamify.rankForLevel(lvl.level);
     $('#hero-level').textContent = lvl.level;
     $('#hero-xp-label').textContent = `${lvl.into} / ${lvl.needed} XP`;
     $('#hero-xp-fill').style.width = Math.round(lvl.progress * 100) + '%';
+    const rankBadge = $('#hero-rank-badge');
+    if (rankBadge) {
+      rankBadge.textContent = hunterRank.label;
+      rankBadge.style.setProperty('--rank-color', hunterRank.color);
+      rankBadge.style.setProperty('--rank-bg', hexAlpha(hunterRank.color, 0.14));
+    }
 
     const equippedId = Store.getEquippedTitle();
     const equipped = ACHIEVEMENTS.find(a => a.id === equippedId);
@@ -323,15 +409,17 @@
       const done = Store.isDone(h.id, today);
       const rank = Gamify.rankFor(Gamify.countCompletions(h.id, logs));
       const streak = Gamify.currentStreak(h, logs, today);
-      const diff = Gamify.DIFFICULTIES.find(d => d.id === h.difficulty) || Gamify.DIFFICULTIES[0];
+      const xpValue = Gamify.xpForCompletion(lvl.level);
       const item = el('div', 'habit-item' + (done ? ' done' : ''));
+      item.dataset.habitId = h.id;
       item.innerHTML = `
+        <button class="icon-btn drag-handle" title="Drag to reorder" aria-label="Drag to reorder">${iconSVG('ic-grip')}</button>
         <button class="habit-checkbox" aria-label="Mark done">${checkboxGlyph()}</button>
         <div class="habit-icon" style="background:${hexAlpha(h.color, 0.16)}; color:${h.color}">${iconSVG(h.icon)}</div>
         <div class="habit-main">
           <div class="habit-name">${escapeHTML(h.name)}</div>
           <div class="habit-meta">
-            <span class="diff-badge" style="--diff-color:${DIFF_COLORS[diff.id]}">${diff.id}</span>
+            <span class="xp-chip">+${xpValue} XP</span>
             <span class="rank-chip">${iconSVG(rank.icon)} ${rank.name}</span>
             ${streak > 0 ? `<span class="streak-chip">${iconSVG('ic-flame')} ${streak}d</span>` : ''}
           </div>
@@ -357,6 +445,100 @@
     if (state.animateDashboard) {
       Effects.staggerChildren(list);
       state.animateDashboard = false;
+    }
+  }
+
+  /* ---------- Drag to reorder (Dashboard) ----------
+     Uses Pointer Events (unifies mouse + touch) rather than the HTML5
+     Drag and Drop API, which has poor touch support. During a drag we only
+     move elements visually via CSS transform; the underlying order is
+     committed to storage on drop, then the list re-renders from that order —
+     so we never have to manipulate live DOM child order directly. */
+  function initDragReorder() {
+    const list = $('#dashboard-list');
+    const GAP = 10; // must match .habit-list { gap } in CSS
+    let drag = null;
+
+    list.addEventListener('pointerdown', (e) => {
+      const handle = e.target.closest('.drag-handle');
+      if (!handle) return;
+      const item = handle.closest('.habit-item');
+      if (!item) return;
+      e.preventDefault();
+
+      const items = Array.from(list.querySelectorAll('.habit-item'));
+      if (items.length < 2) return; // nothing to reorder
+
+      const rects = items.map(it => it.getBoundingClientRect());
+      const startIndex = items.indexOf(item);
+
+      drag = { el: item, items, rects, startIndex, targetIndex: startIndex, startY: e.clientY, pointerId: e.pointerId };
+      item.classList.add('dragging');
+      items.forEach(it => { if (it !== item) it.style.transition = 'transform 0.18s ease'; });
+
+      try { handle.setPointerCapture(e.pointerId); } catch (err) { /* not critical */ }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    });
+
+    function onMove(e) {
+      if (!drag) return;
+      const deltaY = e.clientY - drag.startY;
+      drag.el.style.transform = `translateY(${deltaY}px)`;
+
+      const draggedRect = drag.rects[drag.startIndex];
+      const spacing = draggedRect.height + GAP;
+      const draggedCenter = draggedRect.top + draggedRect.height / 2 + deltaY;
+
+      // Swap triggers once the dragged card's center crosses the HALF-distance
+      // midpoint toward a neighbor's original slot (standard, responsive
+      // drag-reorder feel — not the neighbor's full original position).
+      let net = 0;
+      drag.items.forEach((it, i) => {
+        if (i === drag.startIndex) return;
+        const r = drag.rects[i];
+        const otherCenter = r.top + r.height / 2;
+        if (i > drag.startIndex) {
+          if (draggedCenter > otherCenter - spacing / 2) net++;
+        } else {
+          if (draggedCenter < otherCenter + spacing / 2) net--;
+        }
+      });
+      let targetIndex = drag.startIndex + net;
+      targetIndex = Math.max(0, Math.min(drag.items.length - 1, targetIndex));
+      drag.targetIndex = targetIndex;
+
+      drag.items.forEach((it, i) => {
+        if (i === drag.startIndex) return;
+        let shift = 0;
+        if (drag.startIndex < targetIndex) {
+          if (i > drag.startIndex && i <= targetIndex) shift = -(draggedRect.height + GAP);
+        } else if (drag.startIndex > targetIndex) {
+          if (i >= targetIndex && i < drag.startIndex) shift = draggedRect.height + GAP;
+        }
+        it.style.transform = shift ? `translateY(${shift}px)` : '';
+      });
+    }
+
+    function onUp() {
+      if (!drag) return;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+
+      const { items, startIndex, targetIndex } = drag;
+      items.forEach(it => { it.style.transform = ''; it.style.transition = ''; });
+      drag.el.classList.remove('dragging');
+
+      if (targetIndex !== startIndex) {
+        const ids = items.map(it => it.dataset.habitId);
+        const moved = ids.splice(startIndex, 1)[0];
+        ids.splice(targetIndex, 0, moved);
+        Store.reorderHabits(ids);
+      }
+      drag = null;
+      renderDashboard();
     }
   }
 
@@ -490,14 +672,14 @@
 
   /* ---------- Stats ---------- */
   function renderStats() {
-    const allHabits = Store.getHabits();
     const habits = Store.getActiveHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
+    const penalties = Store.getPenalties();
     const today = Store.todayISO();
 
     const totalCompletions = Object.values(logs).reduce((s, day) => s + Object.keys(day).length, 0);
-    const xp = Gamify.totalXP(logs, allHabits, perfectDays);
+    const xp = Gamify.totalXP(logs, perfectDays, penalties);
     const bestStreak = habits.reduce((max, h) => Math.max(max, Gamify.currentStreak(h, logs, today)), 0);
     const activeDays = Object.keys(logs).filter(d => Object.keys(logs[d]).length > 0).length;
 
@@ -611,9 +793,17 @@
     const habits = Store.getHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
-    const xp = Gamify.totalXP(logs, habits, perfectDays);
+    const penalties = Store.getPenalties();
+    const xp = Gamify.totalXP(logs, perfectDays, penalties);
     const lvl = Gamify.levelFromXP(xp);
+    const hunterRank = Gamify.rankForLevel(lvl.level);
     $('#profile-level').textContent = lvl.level;
+    const profileRank = $('#profile-rank');
+    if (profileRank) {
+      profileRank.textContent = hunterRank.label;
+      profileRank.style.setProperty('--rank-color', hunterRank.color);
+      profileRank.style.setProperty('--rank-bg', hexAlpha(hunterRank.color, 0.14));
+    }
 
     const equippedId = Store.getEquippedTitle();
     const equipped = ACHIEVEMENTS.find(a => a.id === equippedId);
@@ -717,21 +907,6 @@
       statSelect.appendChild(opt);
     });
     statSelect.addEventListener('change', (e) => { state.selectedStat = e.target.value; });
-
-    const diffPicker = $('#diff-picker');
-    diffPicker.innerHTML = '';
-    Gamify.DIFFICULTIES.forEach(d => {
-      const b = el('button', 'diff-chip', d.id);
-      b.type = 'button';
-      b.title = `${d.label} — ${d.xp} XP per completion`;
-      b.style.setProperty('--diff-color', DIFF_COLORS[d.id]);
-      b.style.setProperty('--diff-bg', hexAlpha(DIFF_COLORS[d.id], 0.15));
-      b.addEventListener('click', () => {
-        state.selectedDifficulty = d.id;
-        $all('.diff-chip', diffPicker).forEach(x => x.classList.toggle('selected', x === b));
-      });
-      diffPicker.appendChild(b);
-    });
   }
 
   function openHabitModal(habitId) {
@@ -749,12 +924,10 @@
     state.selectedColor = habit ? habit.color : COLORS[0];
     state.selectedDays = habit && habit.frequency.type === 'weekdays' ? [...habit.frequency.days] : [1, 2, 3, 4, 5];
     state.selectedStat = habit ? (habit.stat || Gamify.DEFAULT_STAT) : Gamify.DEFAULT_STAT;
-    state.selectedDifficulty = habit ? (habit.difficulty || Gamify.DEFAULT_DIFFICULTY) : Gamify.DEFAULT_DIFFICULTY;
 
     $all('.icon-choice').forEach(b => b.classList.toggle('selected', b.querySelector('use').getAttribute('href').endsWith('#' + state.selectedIcon)));
     $all('.swatch').forEach(b => b.classList.toggle('selected', b.style.background === hexToRgbStr(state.selectedColor)));
     $all('.day-toggle').forEach((b, idx) => b.classList.toggle('selected', state.selectedDays.includes(idx)));
-    $all('.diff-chip').forEach(b => b.classList.toggle('selected', b.textContent === state.selectedDifficulty));
     $('#habit-stat').value = state.selectedStat;
 
     $('#habit-name').value = habit ? habit.name : '';
@@ -784,7 +957,6 @@
       icon: state.selectedIcon,
       color: state.selectedColor,
       stat: state.selectedStat,
-      difficulty: state.selectedDifficulty,
       frequency
     };
 
@@ -865,10 +1037,10 @@
   function closeModal(sel) { $(sel).classList.remove('open'); }
 
   function initModals() {
-    $('#fab-add').addEventListener('click', () => openHabitModal(null));
+    $('#fab-add').addEventListener('click', () => { if (typeof Sound !== 'undefined') Sound.click(); openHabitModal(null); });
     $('#habit-modal-close').addEventListener('click', () => closeModal('#habit-modal'));
     $('#habit-modal').addEventListener('click', (e) => { if (e.target.id === 'habit-modal') closeModal('#habit-modal'); });
-    $('#habit-form').addEventListener('submit', saveHabitForm);
+    $('#habit-form').addEventListener('submit', (e) => { if (typeof Sound !== 'undefined') Sound.click(); saveHabitForm(e); });
     $('#habit-delete-btn').addEventListener('click', archiveCurrentHabit);
     $('#habit-permadelete-btn').addEventListener('click', permanentlyDeleteCurrentHabit);
     $('#habit-frequency').addEventListener('change', (e) => {
@@ -918,6 +1090,37 @@
   function initSettings() {
     $('#theme-btn-dark').addEventListener('click', () => setTheme('dark'));
     $('#theme-btn-light').addEventListener('click', () => setTheme('light'));
+
+    const settings = Store.getSettings();
+    $('#sound-btn-on').classList.toggle('active', settings.sound === true);
+    $('#sound-btn-off').classList.toggle('active', settings.sound !== true);
+    $('#sound-btn-on').addEventListener('click', () => {
+      setSoundEnabled(true);
+      $('#sound-btn-on').classList.add('active');
+      $('#sound-btn-off').classList.remove('active');
+      Sound.click();
+    });
+    $('#sound-btn-off').addEventListener('click', () => {
+      Sound.click(); // plays just before disabling, so toggling off still gives feedback
+      setSoundEnabled(false);
+      $('#sound-btn-off').classList.add('active');
+      $('#sound-btn-on').classList.remove('active');
+    });
+
+    $('#penalty-btn-on').classList.toggle('active', settings.penaltiesEnabled !== false);
+    $('#penalty-btn-off').classList.toggle('active', settings.penaltiesEnabled === false);
+    $('#penalty-btn-on').addEventListener('click', () => {
+      const s = Store.getSettings(); s.penaltiesEnabled = true; Store.saveSettings(s);
+      $('#penalty-btn-on').classList.add('active');
+      $('#penalty-btn-off').classList.remove('active');
+      if (typeof Sound !== 'undefined') Sound.click();
+    });
+    $('#penalty-btn-off').addEventListener('click', () => {
+      const s = Store.getSettings(); s.penaltiesEnabled = false; Store.saveSettings(s);
+      $('#penalty-btn-off').classList.add('active');
+      $('#penalty-btn-on').classList.remove('active');
+      if (typeof Sound !== 'undefined') Sound.click();
+    });
 
     $('#btn-export').addEventListener('click', () => {
       const data = Store.exportData();
@@ -1081,6 +1284,7 @@
     $('#settings-version').textContent = 'v' + self.APP_VERSION;
 
     initTheme();
+    initSound();
     buildPickers();
     initNav();
     initModals();
@@ -1088,7 +1292,9 @@
     initHistoryNav();
     initServiceWorker();
     initOnboarding();
+    initDragReorder();
 
+    checkDailyPenalty();
     renderDashboard();
     checkForNewVersion();
     checkAchievements();

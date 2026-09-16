@@ -2,8 +2,8 @@
 
 const KEYS = {
   habits: 'harsenal_habits',
-  logs: 'harsenal_logs',                   // { 'YYYY-MM-DD': { habitId: true } }
-  settings: 'harsenal_settings',           // { theme: 'dark' | 'light' }
+  logs: 'harsenal_logs',                   // { 'YYYY-MM-DD': { habitId: xpValue } }
+  settings: 'harsenal_settings',           // { theme, sound, penaltiesEnabled }
   lastSeenVersion: 'harsenal_last_seen_version',
   freezes: 'harsenal_freezes',             // number of streak-freeze tokens available
   frozenDates: 'harsenal_frozen_dates',    // [ 'YYYY-MM-DD', ... ] dates protected by a freeze
@@ -11,13 +11,15 @@ const KEYS = {
   freezePrompted: 'harsenal_freeze_prompted', // [ 'YYYY-MM-DD', ... ] dates already asked about
   achievements: 'harsenal_achievements',   // [ achievementId, ... ] unlocked
   equippedTitle: 'harsenal_equipped_title', // achievementId or null
-  onboarded: 'harsenal_onboarded'          // 'true' once the intro has been shown
+  onboarded: 'harsenal_onboarded',         // 'true' once the intro has been shown
+  penalties: 'harsenal_penalties',         // { 'YYYY-MM-DD': xpLost }
+  penaltyProcessed: 'harsenal_penalty_processed' // [ 'YYYY-MM-DD', ... ] dates already checked
 };
 
 const DEFAULT_HABITS = [
-  { id: 'h_water', name: 'Drink water', icon: 'ic-droplet', color: '#5eb1e8', stat: 'VIT', difficulty: 'E', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
-  { id: 'h_read', name: 'Read 20 minutes', icon: 'ic-book', color: '#e8a33d', stat: 'INT', difficulty: 'D', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
-  { id: 'h_train', name: 'Train', icon: 'ic-dumbbell', color: '#7cd45e', stat: 'STR', difficulty: 'C', archived: false, frequency: { type: 'weekdays', days: [1, 2, 3, 4, 5] }, createdAt: todayISO() }
+  { id: 'h_water', name: 'Drink water', icon: 'ic-droplet', color: '#5eb1e8', stat: 'VIT', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
+  { id: 'h_read', name: 'Read 20 minutes', icon: 'ic-book', color: '#e8a33d', stat: 'INT', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
+  { id: 'h_train', name: 'Train', icon: 'ic-dumbbell', color: '#7cd45e', stat: 'STR', archived: false, frequency: { type: 'weekdays', days: [1, 2, 3, 4, 5] }, createdAt: todayISO() }
 ];
 
 function todayISO(d = new Date()) {
@@ -54,11 +56,10 @@ const Store = {
       habits = DEFAULT_HABITS;
       writeJSON(KEYS.habits, habits);
     }
-    // Backfill fields for habits saved before stats/difficulty/archiving existed.
+    // Backfill fields for habits saved before stats/archiving existed.
     let changed = false;
     habits.forEach(h => {
       if (!h.stat) { h.stat = 'STR'; changed = true; }
-      if (!h.difficulty) { h.difficulty = 'E'; changed = true; }
       if (typeof h.archived !== 'boolean') { h.archived = false; changed = true; }
     });
     if (changed) writeJSON(KEYS.habits, habits);
@@ -100,6 +101,22 @@ const Store = {
     this.updateHabit(id, { archived: false });
   },
 
+  // Reorders active habits to match orderedIds (an array of habit ids in the
+  // desired display order). Archived habits are left in place at the end —
+  // their order never matters since they're only shown in a flat list.
+  reorderHabits(orderedIds) {
+    const all = this.getHabits();
+    const byId = {};
+    all.forEach(h => { byId[h.id] = h; });
+
+    const reorderedActive = orderedIds.map(id => byId[id]).filter(Boolean);
+    const placedIds = new Set(orderedIds);
+    const strayActive = all.filter(h => !h.archived && !placedIds.has(h.id));
+    const archived = all.filter(h => h.archived);
+
+    this.saveHabits([...reorderedActive, ...strayActive, ...archived]);
+  },
+
   // Permanently removes a habit AND its logged history. Irreversible —
   // archiveHabit() is the safe, reversible alternative used by the UI's
   // default "Archive" action.
@@ -124,20 +141,23 @@ const Store = {
     return !!(logs[dateISO] && logs[dateISO][habitId]);
   },
 
-  toggle(habitId, dateISO) {
+  // xpValue is snapshotted at the moment of completion (computed by the
+  // caller from the CURRENT hunter rank) so future rank changes never
+  // retroactively rewrite XP already earned. Ignored when un-toggling.
+  toggle(habitId, dateISO, xpValue) {
     const logs = this.getLogs();
     if (!logs[dateISO]) logs[dateISO] = {};
     if (logs[dateISO][habitId]) {
       delete logs[dateISO][habitId];
     } else {
-      logs[dateISO][habitId] = true;
+      logs[dateISO][habitId] = xpValue && xpValue > 0 ? xpValue : 10;
     }
     this.saveLogs(logs);
     return !!logs[dateISO][habitId];
   },
 
   getSettings() {
-    return readJSON(KEYS.settings, { theme: null });
+    return readJSON(KEYS.settings, { theme: null, sound: false, penaltiesEnabled: true });
   },
 
   saveSettings(settings) {
@@ -199,6 +219,24 @@ const Store = {
     writeJSON(KEYS.perfectDays, days);
   },
 
+  /* ---- Penalties (missed daily quests) ---- */
+  getPenalties() {
+    return readJSON(KEYS.penalties, {});
+  },
+  setPenalty(dateISO, amount) {
+    const p = this.getPenalties();
+    p[dateISO] = amount;
+    writeJSON(KEYS.penalties, p);
+  },
+  getPenaltyProcessed() {
+    return readJSON(KEYS.penaltyProcessed, []);
+  },
+  markPenaltyProcessed(dateISO) {
+    const dates = this.getPenaltyProcessed();
+    if (!dates.includes(dateISO)) dates.push(dateISO);
+    writeJSON(KEYS.penaltyProcessed, dates);
+  },
+
   /* ---- Achievements / titles ---- */
   getAchievements() {
     return readJSON(KEYS.achievements, []);
@@ -228,7 +266,8 @@ const Store = {
       frozenDates: this.getFrozenDates(),
       perfectDays: this.getPerfectDays(),
       achievements: this.getAchievements(),
-      equippedTitle: this.getEquippedTitle()
+      equippedTitle: this.getEquippedTitle(),
+      penalties: this.getPenalties()
     };
   },
 
@@ -244,6 +283,7 @@ const Store = {
     if (data.perfectDays) writeJSON(KEYS.perfectDays, data.perfectDays);
     if (Array.isArray(data.achievements)) writeJSON(KEYS.achievements, data.achievements);
     if (data.equippedTitle) this.setEquippedTitle(data.equippedTitle);
+    if (data.penalties) writeJSON(KEYS.penalties, data.penalties);
   },
 
   wipeAll() {

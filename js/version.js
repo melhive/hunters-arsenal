@@ -8,9 +8,37 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '1.4.0';
+self.APP_VERSION = '2.1.0';
 
 self.CHANGELOG = [
+  {
+    version: '2.1.0',
+    date: '2026-09-16',
+    changes: [
+      'Rebalanced Hunter Rank pacing \u2014 a consistent hunter can now reach S-Rank in about a year, instead of several.',
+      'Earlier ranks come faster too: D-Rank in ~2 weeks, C in ~6 weeks, B in ~3 months, A in ~6 months at typical consistency.'
+    ]
+  },
+  {
+    version: '2.0.0',
+    date: '2026-09-15',
+    changes: [
+      'Hunter Rank overhaul \u2014 your rank (E through S) is now derived automatically from your Level, not manually chosen. Higher rank means more XP per quest.',
+      'A bigger RANK UP celebration, separate from the regular level-up, for these rarer milestones.',
+      'Penalty Quests \u2014 missing a scheduled habit costs a small, one-time amount of XP (no escalation). Toggleable in Settings.',
+      'Streak Freezes now also excuse a Penalty Quest for that day.',
+      'Sound effects \u2014 synthesized chimes for check-offs, level-ups, rank-ups, achievements, and penalties. Off by default; enable it in Settings.',
+      'Habit cards now show a live "+XP" value instead of a fixed difficulty badge.'
+    ]
+  },
+  {
+    version: '1.5.0',
+    date: '2026-09-14',
+    changes: [
+      'Drag to reorder habits \u2014 grab the handle on any Dashboard card to rearrange your roster.',
+      'Works with touch and mouse alike.'
+    ]
+  },
   {
     version: '1.4.0',
     date: '2026-09-14',

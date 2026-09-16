@@ -1,5 +1,7 @@
-/* Ranks, XP, stats, streaks, and perfect-day math. Pure functions — no DOM, no storage writes. */
+/* Ranks, XP, stats, streaks, perfect-day, and penalty math. Pure functions — no DOM, no storage writes. */
 
+// Per-habit "mastery" rank — how proficient you've become at ONE specific
+// habit, based on how many times you've completed it. Unrelated to Hunter Rank.
 const RANKS = [
   { name: 'Recruit', min: 0, icon: 'ic-smile' },
   { name: 'Cadet', min: 10, icon: 'ic-target' },
@@ -9,20 +11,44 @@ const RANKS = [
   { name: 'Legendary', min: 200, icon: 'ic-trophy' }
 ];
 
-// Solo-Leveling-style difficulty ranks. Higher rank = more XP per completion.
-const DIFFICULTIES = [
-  { id: 'E', label: 'E-Rank', xp: 10 },
-  { id: 'D', label: 'D-Rank', xp: 15 },
-  { id: 'C', label: 'C-Rank', xp: 25 },
-  { id: 'B', label: 'B-Rank', xp: 40 },
-  { id: 'A', label: 'A-Rank', xp: 60 },
-  { id: 'S', label: 'S-Rank', xp: 100 }
+// Hunter Rank — YOUR overall rank, derived automatically from Level. Not
+// manually set. Higher rank means every completion earns more XP, via the
+// multiplier below. Thresholds are tuned so a genuinely consistent hunter
+// (a handful of habits, most days) reaches S-Rank within roughly a year —
+// see js/version.js changelog for the tuning pass. Multiplier stays modest
+// (1.0x-2.2x) so it accelerates progress without ever runaway/snowballing.
+const HUNTER_RANKS = [
+  { id: 'E', label: 'E-Rank', minLevel: 1, multiplier: 1.0, color: '#8b959c' },
+  { id: 'D', label: 'D-Rank', minLevel: 3, multiplier: 1.2, color: '#5eb1e8' },
+  { id: 'C', label: 'C-Rank', minLevel: 6, multiplier: 1.4, color: '#7cd45e' },
+  { id: 'B', label: 'B-Rank', minLevel: 9, multiplier: 1.6, color: '#c78ce8' },
+  { id: 'A', label: 'A-Rank', minLevel: 13, multiplier: 1.8, color: '#e8a33d' },
+  { id: 'S', label: 'S-Rank', minLevel: 17, multiplier: 2.2, color: '#e8636c' }
 ];
-const DEFAULT_DIFFICULTY = 'E';
+const BASE_XP = 10;
 
-function xpForDifficulty(diffId) {
-  const d = DIFFICULTIES.find(x => x.id === diffId);
-  return d ? d.xp : DIFFICULTIES[0].xp;
+function rankForLevel(level) {
+  let current = HUNTER_RANKS[0];
+  for (const r of HUNTER_RANKS) {
+    if (level >= r.minLevel) current = r;
+  }
+  return current;
+}
+
+// XP a single habit completion is worth RIGHT NOW, given the hunter's
+// current level. This value gets snapshotted into the log entry at the
+// moment of completion (see Store.toggle) — future rank changes only affect
+// FUTURE completions, never rewrite XP already earned.
+function xpForCompletion(level) {
+  return Math.round(BASE_XP * rankForLevel(level).multiplier);
+}
+
+// A log entry may be a plain `true` (habits completed before this XP system
+// existed) or a snapshotted XP number. This normalizes either to a number.
+function xpValueOf(entry) {
+  if (entry === true) return BASE_XP; // legacy completions, treated as base-rate
+  if (typeof entry === 'number' && entry > 0) return entry;
+  return 0;
 }
 
 // The five hunter stats. Every habit feeds exactly one.
@@ -117,33 +143,39 @@ function habitById(habits, id) {
   return habits.find(h => h.id === id) || null;
 }
 
-// Total XP = sum of every completion's difficulty-based XP + all awarded perfect-day bonuses.
-function totalXP(logs, habits, perfectDays) {
+// Total XP = every completion's SNAPSHOTTED xp value (not recomputed from
+// current rank — see xpForCompletion's comment) + perfect-day bonuses -
+// penalties, floored at 0.
+function totalXP(logs, perfectDays, penalties) {
   let total = 0;
   for (const date in logs) {
     for (const habitId in logs[date]) {
-      if (!logs[date][habitId]) continue;
-      const habit = habitById(habits, habitId);
-      total += xpForDifficulty(habit ? habit.difficulty : DEFAULT_DIFFICULTY);
+      total += xpValueOf(logs[date][habitId]);
     }
   }
   if (perfectDays) {
     for (const date in perfectDays) total += perfectDays[date] || 0;
   }
-  return total;
+  if (penalties) {
+    for (const date in penalties) total -= penalties[date] || 0;
+  }
+  return Math.max(0, total);
 }
 
 // XP earned broken down by stat, for the Hunter Profile stat bars.
+// Uses each habit's CURRENT stat assignment (editing a habit's stat later
+// reclassifies its past XP — a reasonable, simple behavior).
 function statTotals(logs, habits) {
   const totals = {};
   STATS.forEach(s => { totals[s.id] = 0; });
   for (const date in logs) {
     for (const habitId in logs[date]) {
-      if (!logs[date][habitId]) continue;
+      const val = xpValueOf(logs[date][habitId]);
+      if (!val) continue;
       const habit = habitById(habits, habitId);
       if (!habit) continue;
       const stat = habit.stat || DEFAULT_STAT;
-      totals[stat] = (totals[stat] || 0) + xpForDifficulty(habit.difficulty);
+      totals[stat] = (totals[stat] || 0) + val;
     }
   }
   return totals;
@@ -194,8 +226,9 @@ function perfectDayStreak(habits, logs, frozenDates, perfectDays, todayISO) {
 }
 
 const Gamify = {
-  RANKS, DIFFICULTIES, DEFAULT_DIFFICULTY, xpForDifficulty,
+  RANKS, rankFor,
+  HUNTER_RANKS, BASE_XP, rankForLevel, xpForCompletion, xpValueOf,
   STATS, DEFAULT_STAT,
-  rankFor, isScheduledForDate, countCompletions, currentStreak, longestStreak,
+  isScheduledForDate, countCompletions, currentStreak, longestStreak,
   totalXP, statTotals, levelFromXP, isPerfectDay, perfectDayStreak
 };
