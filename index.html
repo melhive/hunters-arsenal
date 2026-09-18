@@ -293,9 +293,10 @@
     <section class="view active" id="view-dashboard">
       <div class="page-header">
         <div>
-          <h1>Today's Roster</h1>
+          <h1>Daily Quest Log</h1>
           <div class="subtitle" id="dashboard-date"></div>
         </div>
+        <div class="time-remaining" id="time-remaining"></div>
       </div>
 
       <div class="bracket-card xp-hero">
@@ -308,7 +309,7 @@
           <div class="xp-top">
             <span id="hero-xp-label">0 / 100 XP</span>
             <span class="rank-badge" id="hero-rank-badge">E-Rank</span>
-            <span id="hero-today-pct">0% today</span>
+            <span class="class-badge" id="hero-class-badge" style="display:none;"></span>
           </div>
           <div class="xp-bar-track"><div class="xp-bar-fill" id="hero-xp-fill" style="width:0%"></div></div>
           <div id="hero-title-chip" style="display:none;" class="hero-title-chip"></div>
@@ -316,6 +317,24 @@
         <div class="hero-badges">
           <div class="hero-badge combo" id="hero-combo" title="Perfect day streak"><svg><use href="#ic-flame"></use></svg><span id="hero-combo-count">0</span></div>
           <div class="hero-badge freeze" id="hero-freeze" title="Streak freezes available"><svg><use href="#ic-shield"></use></svg><span id="hero-freeze-count">0</span></div>
+        </div>
+      </div>
+
+      <div class="bracket-card quest-progress-card">
+        <span class="bc-tr"></span><span class="bc-bl"></span>
+        <div class="quest-ring-wrap">
+          <svg class="quest-ring" viewBox="0 0 120 120">
+            <circle class="quest-ring-track" cx="60" cy="60" r="52"></circle>
+            <circle class="quest-ring-fill" id="quest-ring-fill" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="quest-ring-center">
+            <div class="quest-ring-count" id="quest-ring-count">0/0</div>
+            <div class="quest-ring-label">Cleared</div>
+          </div>
+        </div>
+        <div class="quest-progress-info">
+          <div class="quest-progress-title">Today's Quests</div>
+          <div class="quest-progress-sub" id="quest-progress-sub">Nothing scheduled</div>
         </div>
       </div>
 
@@ -392,6 +411,7 @@
         <div>
           <div class="hunter-name">Level <span id="profile-level">1</span> Hunter <span class="rank-badge" id="profile-rank">E-Rank</span></div>
           <div class="hunter-title" id="profile-title">No title equipped</div>
+          <div class="class-badge" id="profile-class-badge" style="display:none; margin-top:6px;"></div>
         </div>
       </div>
 

@@ -288,6 +288,36 @@
     });
   }
 
+  const GREETING_LINES = [
+    'A new day. The System has logged your quests.',
+    'Rise, Hunter. Today\u2019s trial awaits.',
+    'The gate resets at midnight. Move before it closes.',
+    'Your quest log has refreshed. Clear it before the day ends.',
+    'Another chance to grow stronger. Don\u2019t waste it.',
+    'The board is set. Today\u2019s quests are ready.'
+  ];
+
+  // Once-per-day "morning briefing" — an original System line plus a quick
+  // summary of what's scheduled. Shown at most once per calendar day.
+  function checkDailyGreeting() {
+    const today = Store.todayISO();
+    if (Store.getLastGreetingDate() === today) return;
+    Store.setLastGreetingDate(today);
+
+    const habits = Store.getActiveHabits();
+    const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, today));
+    if (scheduled.length === 0) return; // nothing to brief if there's nothing scheduled
+
+    const line = GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+    setTimeout(() => {
+      SystemWindow.show({
+        type: 'default', icon: 'ic-calendar', title: 'DAILY BRIEFING',
+        lines: [line, `${scheduled.length} quest${scheduled.length === 1 ? '' : 's'} scheduled today.`],
+        duration: 4600
+      });
+    }, 600);
+  }
+
   // Offer a streak freeze if yesterday broke a perfect-day combo. Asked once per date.
   function checkFreezeOffer() {
     const today = Store.todayISO();
@@ -355,19 +385,46 @@
   }
 
   /* ---------- Dashboard ---------- */
+  const RING_CIRCUMFERENCE = 2 * Math.PI * 52;
+  function updateQuestRing(done, total) {
+    const fill = $('#quest-ring-fill');
+    if (!fill) return;
+    const pct = total > 0 ? done / total : 0;
+    fill.style.strokeDasharray = String(RING_CIRCUMFERENCE);
+    fill.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - pct));
+    $('#quest-ring-count').textContent = `${done}/${total}`;
+    const sub = $('#quest-progress-sub');
+    if (total === 0) sub.textContent = 'Nothing scheduled today';
+    else if (done === total) sub.textContent = 'All quests cleared!';
+    else sub.textContent = `${total - done} quest${total - done === 1 ? '' : 's'} remaining`;
+  }
+
+  function updateTimeRemaining() {
+    const el = $('#time-remaining');
+    if (!el) return;
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    const diffMs = midnight - now;
+    const hours = Math.floor(diffMs / 3600000);
+    const minutes = Math.floor((diffMs % 3600000) / 60000);
+    el.textContent = `${hours}h ${minutes}m left today`;
+  }
+
   function renderDashboard() {
     const today = Store.todayISO();
     $('#dashboard-date').textContent = formatDateLabel(today);
+    updateTimeRemaining();
 
     const habits = Store.getActiveHabits();
+    const allHabits = Store.getHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
     const penalties = Store.getPenalties();
     const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, today));
 
     const doneCount = scheduled.filter(h => Store.isDone(h.id, today)).length;
-    const pct = scheduled.length ? Math.round((doneCount / scheduled.length) * 100) : 0;
-    $('#hero-today-pct').textContent = pct + '% today';
+    updateQuestRing(doneCount, scheduled.length);
 
     const xp = Gamify.totalXP(logs, perfectDays, penalties);
     const lvl = Gamify.levelFromXP(xp);
@@ -380,6 +437,14 @@
       rankBadge.textContent = hunterRank.label;
       rankBadge.style.setProperty('--rank-color', hunterRank.color);
       rankBadge.style.setProperty('--rank-bg', hexAlpha(hunterRank.color, 0.14));
+    }
+
+    const statTotalsNow = Gamify.statTotals(logs, allHabits);
+    const cls = Gamify.currentClass(statTotalsNow);
+    const classBadge = $('#hero-class-badge');
+    if (classBadge) {
+      if (cls) { classBadge.style.display = 'inline-flex'; classBadge.textContent = 'Class: ' + cls.name; }
+      else classBadge.style.display = 'none';
     }
 
     const equippedId = Store.getEquippedTitle();
@@ -810,6 +875,16 @@
     $('#profile-title').textContent = equipped ? `"${equipped.name}"` : 'No title equipped yet';
 
     const totals = Gamify.statTotals(logs, habits);
+    const cls = Gamify.currentClass(totals);
+    const classBadge = $('#profile-class-badge');
+    if (classBadge) {
+      if (cls) {
+        classBadge.style.display = 'inline-flex';
+        classBadge.textContent = `Class: ${cls.name} (${Gamify.STATS.find(s => s.id === cls.stat).label})`;
+      } else {
+        classBadge.style.display = 'none';
+      }
+    }
     const maxVal = Math.max(1, ...Object.values(totals));
     const barsEl = $('#stat-bars');
     barsEl.innerHTML = '';
@@ -1296,6 +1371,7 @@
 
     checkDailyPenalty();
     renderDashboard();
+    checkDailyGreeting();
     checkForNewVersion();
     checkAchievements();
     setTimeout(checkFreezeOffer, 1300);

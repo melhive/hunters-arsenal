@@ -25,6 +25,7 @@ const PRECACHE_URLS = [
   'js/systemwindow.js',
   'js/app.js',
   'assets/logo.svg',
+  'assets/logo-maskable.svg',
   'assets/fonts/oswald-latin-400-normal.woff2',
   'assets/fonts/oswald-latin-500-normal.woff2',
   'assets/fonts/oswald-latin-600-normal.woff2',
@@ -38,7 +39,9 @@ const PRECACHE_URLS = [
   'icons/icon-32.png',
   'icons/icon-180.png',
   'icons/icon-192.png',
-  'icons/icon-512.png'
+  'icons/icon-192-maskable.png',
+  'icons/icon-512.png',
+  'icons/icon-512-maskable.png'
 ];
 
 self.addEventListener('install', (event) => {

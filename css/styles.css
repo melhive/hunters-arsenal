@@ -757,3 +757,34 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
   cursor: grabbing;
   border-color: var(--accent);
 }
+
+/* ===== Time remaining + Class badge ===== */
+.time-remaining {
+  font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-faint);
+  white-space: nowrap; align-self: flex-start; padding-top: 4px;
+}
+.class-badge {
+  font-family: var(--font-display); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em;
+  padding: 2px 9px; border-radius: 20px;
+  border: 1px solid rgba(199,140,232,0.4); color: #c78ce8; background: rgba(199,140,232,0.12);
+}
+
+/* ===== Quest Progress ring card ===== */
+.quest-progress-card {
+  display: flex; align-items: center; gap: 18px; margin-bottom: 22px;
+}
+.quest-ring-wrap { position: relative; width: 92px; height: 92px; flex-shrink: 0; }
+.quest-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.quest-ring-track { fill: none; stroke: var(--border-soft); stroke-width: 10; }
+.quest-ring-fill {
+  fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round;
+  stroke-dasharray: 326.7; stroke-dashoffset: 326.7;
+  transition: stroke-dashoffset 0.6s var(--ease);
+}
+.quest-ring-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.quest-ring-count { font-family: var(--font-display); font-size: 1.15rem; color: var(--text); line-height: 1; }
+.quest-ring-label { font-size: 0.6rem; color: var(--text-faint); letter-spacing: 0.06em; margin-top: 2px; }
+.quest-progress-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
+.quest-progress-sub { font-size: 0.82rem; color: var(--text-muted); }

@@ -12,6 +12,7 @@ const KEYS = {
   achievements: 'harsenal_achievements',   // [ achievementId, ... ] unlocked
   equippedTitle: 'harsenal_equipped_title', // achievementId or null
   onboarded: 'harsenal_onboarded',         // 'true' once the intro has been shown
+  lastGreetingDate: 'harsenal_last_greeting_date', // 'YYYY-MM-DD' the daily greeting was last shown
   penalties: 'harsenal_penalties',         // { 'YYYY-MM-DD': xpLost }
   penaltyProcessed: 'harsenal_penalty_processed' // [ 'YYYY-MM-DD', ... ] dates already checked
 };
@@ -178,6 +179,14 @@ const Store = {
   },
   setOnboarded() {
     localStorage.setItem(KEYS.onboarded, 'true');
+  },
+
+  /* ---- Daily greeting ---- */
+  getLastGreetingDate() {
+    return localStorage.getItem(KEYS.lastGreetingDate);
+  },
+  setLastGreetingDate(dateISO) {
+    localStorage.setItem(KEYS.lastGreetingDate, dateISO);
   },
 
   /* ---- Streak freezes ---- */

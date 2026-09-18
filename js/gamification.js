@@ -61,6 +61,47 @@ const STATS = [
 ];
 const DEFAULT_STAT = 'STR';
 
+// Flavor-only "Class" tag: whichever stat you've invested the most XP in
+// determines your current archetype tier. This is purely descriptive (not
+// an unlockable achievement) — it just reflects your current build, and can
+// change if your focus shifts. Tiers scale with that ONE stat's own XP,
+// independent of overall Hunter Rank.
+const CLASS_TIERS = {
+  STR: ['Brawler', 'Berserker', 'Warbringer', 'Juggernaut', 'Titan'],
+  VIT: ['Survivor', 'Ironclad', 'Bulwark', 'Immortal', 'Colossus'],
+  INT: ['Scholar', 'Analyst', 'Strategist', 'Savant', 'Archon'],
+  PER: ['Initiate', 'Tracker', 'Sentinel', 'Seer', 'Oracle'],
+  CHA: ['Novice', 'Speaker', 'Envoy', 'Luminary', 'Sovereign']
+};
+const CLASS_TIER_THRESHOLDS = [30, 120, 350, 800, 1600]; // XP in that one stat
+const CLASS_MIN_XP = CLASS_TIER_THRESHOLDS[0];
+
+// Given per-stat XP totals (from statTotals), returns the current dynamic
+// Class tag, or null if no stat has enough XP yet to have a class at all.
+function currentClass(statTotals) {
+  let bestStat = null, bestXP = 0;
+  STATS.forEach(s => {
+    const xp = statTotals[s.id] || 0;
+    if (xp > bestXP) { bestXP = xp; bestStat = s.id; }
+  });
+  if (!bestStat || bestXP < CLASS_MIN_XP) return null;
+
+  const tiers = CLASS_TIERS[bestStat];
+  let tierIndex = 0;
+  for (let i = 0; i < CLASS_TIER_THRESHOLDS.length; i++) {
+    if (bestXP >= CLASS_TIER_THRESHOLDS[i]) tierIndex = i;
+  }
+  const nextThreshold = CLASS_TIER_THRESHOLDS[tierIndex + 1] || null;
+  return {
+    stat: bestStat,
+    name: tiers[tierIndex],
+    tier: tierIndex + 1,
+    xp: bestXP,
+    nextThreshold,
+    progress: nextThreshold ? (bestXP - CLASS_TIER_THRESHOLDS[tierIndex]) / (nextThreshold - CLASS_TIER_THRESHOLDS[tierIndex]) : 1
+  };
+}
+
 function rankFor(completions) {
   let current = RANKS[0];
   for (const r of RANKS) {
@@ -228,7 +269,7 @@ function perfectDayStreak(habits, logs, frozenDates, perfectDays, todayISO) {
 const Gamify = {
   RANKS, rankFor,
   HUNTER_RANKS, BASE_XP, rankForLevel, xpForCompletion, xpValueOf,
-  STATS, DEFAULT_STAT,
+  STATS, DEFAULT_STAT, CLASS_TIERS, currentClass,
   isScheduledForDate, countCompletions, currentStreak, longestStreak,
   totalXP, statTotals, levelFromXP, isPerfectDay, perfectDayStreak
 };

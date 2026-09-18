@@ -8,9 +8,22 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '2.1.0';
+self.APP_VERSION = '2.2.0';
 
 self.CHANGELOG = [
+  {
+    version: '2.2.0',
+    date: '2026-09-17',
+    changes: [
+      'Brand new logo \u2014 a glowing blade in a rank medallion, replacing the shield mark.',
+      'Fixed the home-screen icon showing a white background on some phones (a proper dark maskable icon is now included).',
+      '"Today\u2019s Roster" is now "Daily Quest Log."',
+      'A radial progress ring shows today\u2019s quest completion at a glance.',
+      'A time-remaining countdown shows how long is left in the day.',
+      'A once-daily System briefing greets you when you open the app.',
+      'New dynamic "Class" tag \u2014 reflects whichever stat you\u2019ve invested in most (e.g. "Class: Berserker"), shown on Dashboard and Profile.'
+    ]
+  },
   {
     version: '2.1.0',
     date: '2026-09-16',

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bgFill" cx="50%" cy="38%" r="80%">
+      <stop offset="0%" stop-color="#1b2128"/>
+      <stop offset="100%" stop-color="#0d1013"/>
+    </radialGradient>
+    <radialGradient id="medallionFill" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#20272e"/>
+      <stop offset="100%" stop-color="#12161a"/>
+    </radialGradient>
+    <linearGradient id="bladeFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#b8f29a"/>
+      <stop offset="55%" stop-color="#7cd45e"/>
+      <stop offset="100%" stop-color="#4a9c34"/>
+    </linearGradient>
+    <linearGradient id="hiltFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a4148"/>
+      <stop offset="100%" stop-color="#20252a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Edge-to-edge background: fills the ENTIRE icon so no transparency is
+       left for the OS to fill in with white when it applies its own
+       circle/squircle mask on the home screen. -->
+  <rect x="0" y="0" width="200" height="200" fill="url(#bgFill)"/>
+
+  <!-- Mark scaled down ~82% and centered so it stays inside the ~80% safe
+       zone maskable icons require, since the OS may crop right up to that edge. -->
+  <g transform="translate(100,100) scale(0.82) translate(-100,-100)">
+    <circle cx="100" cy="100" r="96" fill="none" stroke="#7cd45e" stroke-width="7" opacity="0.16"/>
+    <circle cx="100" cy="100" r="93" fill="url(#medallionFill)" stroke="#3a4750" stroke-width="2"/>
+    <circle cx="100" cy="100" r="80" fill="none" stroke="#2a3138" stroke-width="1.5"/>
+    <circle cx="100" cy="100" r="93" fill="none" stroke="#7cd45e" stroke-width="4"/>
+
+    <path d="M100 24
+             L117 78
+             L108 78
+             L108 121
+             L92 121
+             L92 78
+             L83 78
+             Z"
+          fill="url(#bladeFill)"/>
+    <line x1="100" y1="38" x2="100" y2="119" stroke="#e8ffe0" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+
+    <rect x="68" y="117" width="64" height="12" rx="4" fill="#e8a33d"/>
+    <rect x="68" y="117" width="64" height="4.5" rx="2" fill="#ffd27a" opacity="0.7"/>
+
+    <path d="M91 131 H109 L107 156 H93 Z" fill="url(#hiltFill)"/>
+
+    <circle cx="100" cy="162" r="8.5" fill="#e8a33d"/>
+    <circle cx="100" cy="162" r="8.5" fill="none" stroke="#ffd27a" stroke-width="1.4" opacity="0.6"/>
+    <circle cx="97" cy="159" r="2" fill="#ffe9bf" opacity="0.85"/>
+  </g>
+</svg>
