@@ -524,9 +524,38 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
   width: 74px; height: 74px; border-radius: 50%; flex-shrink: 0;
   background: var(--accent-dim); border: 2px solid rgba(124,212,94,0.35);
   display: flex; align-items: center; justify-content: center;
+  position: relative; cursor: pointer; overflow: hidden;
 }
 .hunter-avatar svg { width: 34px; height: 34px; color: var(--accent); }
+.hunter-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.avatar-edit-badge {
+  position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--panel);
+  display: flex; align-items: center; justify-content: center; color: #0f1216;
+}
+.avatar-edit-badge svg { width: 12px; height: 12px; color: #0f1216; }
 .hunter-name { font-family: var(--font-display); font-size: 1.3rem; }
+.hunter-subline { font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ===== Settings identity avatar ===== */
+.identity-avatar-wrap {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; cursor: pointer;
+  background: var(--accent-dim); border: 2px solid rgba(124,212,94,0.3);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.identity-avatar-wrap svg { width: 20px; height: 20px; color: var(--accent); }
+.identity-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+/* ===== Dashboard greeting ===== */
+.dash-greeting { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.dash-greeting-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+  background: var(--accent-dim); border: 1.5px solid rgba(124,212,94,0.3);
+  display: flex; align-items: center; justify-content: center;
+}
+.dash-greeting-avatar svg { width: 16px; height: 16px; color: var(--accent); }
+.dash-greeting-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.dash-greeting-text { font-size: 0.92rem; font-weight: 500; color: var(--text); }
 .hunter-title { font-family: var(--font-mono); font-size: 0.8rem; color: var(--amber); margin-top: 2px; }
 
 .stat-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border-soft); }
@@ -657,6 +686,12 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
 .ob-eyebrow { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.14em; color: var(--accent); margin-bottom: 10px; }
 .ob-slide h2 { font-size: 1.3rem; margin-bottom: 10px; line-height: 1.25; }
 .ob-slide p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 18px; }
+.ob-name-input {
+  width: 100%; padding: 11px 14px; margin-bottom: 14px; text-align: center;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--panel-raised); color: var(--text); font-size: 0.92rem; font-family: inherit;
+}
+.ob-name-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 .ob-footer { display: flex; align-items: center; margin-top: 14px; gap: 8px; }
 .ob-dots { display: flex; gap: 6px; flex: 1; }
 .ob-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: background 0.2s var(--ease), width 0.2s var(--ease); }

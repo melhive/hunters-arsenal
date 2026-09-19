@@ -8,9 +8,19 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '2.2.0';
+self.APP_VERSION = '2.3.0';
 
 self.CHANGELOG = [
+  {
+    version: '2.3.0',
+    date: '2026-09-18',
+    changes: [
+      'Hunter Identity \u2014 add your name and a profile photo (optional, set during onboarding or in Settings).',
+      'Your name now appears beside your Rank on the Profile page and in a personal greeting on the Dashboard.',
+      'Level-up, rank-up, perfect day, and title unlock messages now address you by name when set.',
+      'Tap your Profile photo anytime to change it \u2014 stored and resized entirely on-device, never uploaded anywhere.'
+    ]
+  },
   {
     version: '2.2.0',
     date: '2026-09-17',

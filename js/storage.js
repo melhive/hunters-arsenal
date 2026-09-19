@@ -13,6 +13,8 @@ const KEYS = {
   equippedTitle: 'harsenal_equipped_title', // achievementId or null
   onboarded: 'harsenal_onboarded',         // 'true' once the intro has been shown
   lastGreetingDate: 'harsenal_last_greeting_date', // 'YYYY-MM-DD' the daily greeting was last shown
+  name: 'harsenal_name',                   // hunter's display name, optional
+  photo: 'harsenal_photo',                 // data URL, resized client-side, optional
   penalties: 'harsenal_penalties',         // { 'YYYY-MM-DD': xpLost }
   penaltyProcessed: 'harsenal_penalty_processed' // [ 'YYYY-MM-DD', ... ] dates already checked
 };
@@ -189,6 +191,25 @@ const Store = {
     localStorage.setItem(KEYS.lastGreetingDate, dateISO);
   },
 
+  /* ---- Hunter identity (name/photo) — optional, local-only ---- */
+  getName() {
+    return localStorage.getItem(KEYS.name) || '';
+  },
+  setName(name) {
+    const trimmed = (name || '').trim().slice(0, 30);
+    if (trimmed) localStorage.setItem(KEYS.name, trimmed);
+    else localStorage.removeItem(KEYS.name);
+  },
+  getPhoto() {
+    return localStorage.getItem(KEYS.photo) || null;
+  },
+  setPhoto(dataURL) {
+    localStorage.setItem(KEYS.photo, dataURL);
+  },
+  clearPhoto() {
+    localStorage.removeItem(KEYS.photo);
+  },
+
   /* ---- Streak freezes ---- */
   getFreezeCount() {
     return readJSON(KEYS.freezes, 0);
@@ -276,7 +297,9 @@ const Store = {
       perfectDays: this.getPerfectDays(),
       achievements: this.getAchievements(),
       equippedTitle: this.getEquippedTitle(),
-      penalties: this.getPenalties()
+      penalties: this.getPenalties(),
+      name: this.getName(),
+      photo: this.getPhoto()
     };
   },
 
@@ -293,11 +316,15 @@ const Store = {
     if (Array.isArray(data.achievements)) writeJSON(KEYS.achievements, data.achievements);
     if (data.equippedTitle) this.setEquippedTitle(data.equippedTitle);
     if (data.penalties) writeJSON(KEYS.penalties, data.penalties);
+    if (typeof data.name === 'string') this.setName(data.name);
+    if (typeof data.photo === 'string') this.setPhoto(data.photo);
   },
 
   wipeAll() {
     Object.values(KEYS).forEach(k => {
-      if (k === KEYS.settings || k === KEYS.lastSeenVersion || k === KEYS.onboarded) return; // keep theme, version marker, and onboarding state
+      // Keep theme/sound/penalty settings, version marker, onboarding state,
+      // and hunter identity (name/photo) — a habit data reset shouldn't erase who you are.
+      if (k === KEYS.settings || k === KEYS.lastSeenVersion || k === KEYS.onboarded || k === KEYS.name || k === KEYS.photo) return;
       localStorage.removeItem(k);
     });
   }

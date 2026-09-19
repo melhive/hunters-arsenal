@@ -252,6 +252,7 @@
       <div class="ob-eyebrow">RISE IN RANK</div>
       <h2>Your Journey Begins Now</h2>
       <p>Clear every quest in a day for a Perfect Day bonus. Build your combo. Level up. Become Legendary.</p>
+      <input type="text" class="ob-name-input" id="ob-name-input" placeholder="Your name (optional)" maxlength="30">
       <button class="btn btn-primary btn-block" id="ob-begin">Begin Hunting</button>
     </div>
     <div class="ob-footer">
@@ -291,6 +292,13 @@
 
     <!-- DASHBOARD -->
     <section class="view active" id="view-dashboard">
+      <div class="dash-greeting" id="dash-greeting" style="display:none;">
+        <div class="dash-greeting-avatar">
+          <img id="dash-greeting-img" style="display:none;" alt="">
+          <svg><use href="#ic-hunter"></use></svg>
+        </div>
+        <div class="dash-greeting-text" id="dash-greeting-text"></div>
+      </div>
       <div class="page-header">
         <div>
           <h1>Daily Quest Log</h1>
@@ -407,9 +415,15 @@
 
       <div class="bracket-card hunter-card">
         <span class="bc-tr"></span><span class="bc-bl"></span>
-        <div class="hunter-avatar"><svg><use href="#ic-hunter"></use></svg></div>
+        <div class="hunter-avatar" id="profile-avatar-wrap" title="Tap to change photo">
+          <img id="profile-avatar-img" style="display:none;" alt="">
+          <svg id="profile-avatar-icon"><use href="#ic-hunter"></use></svg>
+          <div class="avatar-edit-badge"><svg><use href="#ic-pencil"></use></svg></div>
+        </div>
+        <input type="file" id="profile-avatar-file" accept="image/*" hidden>
         <div>
-          <div class="hunter-name">Level <span id="profile-level">1</span> Hunter <span class="rank-badge" id="profile-rank">E-Rank</span></div>
+          <div class="hunter-name" id="hunter-name-line">Level <span id="profile-level">1</span> Hunter <span class="rank-badge" id="profile-rank">E-Rank</span></div>
+          <div class="hunter-subline" id="hunter-subline" style="display:none;"></div>
           <div class="hunter-title" id="profile-title">No title equipped</div>
           <div class="class-badge" id="profile-class-badge" style="display:none; margin-top:6px;"></div>
         </div>
@@ -433,6 +447,33 @@
         <div>
           <h1>Settings</h1>
           <div class="subtitle">Configure your arsenal</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Hunter Identity</h3>
+        <div class="bracket-card" style="padding:0;">
+          <span class="bc-tr"></span><span class="bc-bl"></span>
+          <div class="setting-row">
+            <div class="identity-avatar-wrap" id="settings-avatar-wrap" title="Tap to change photo">
+              <img id="settings-avatar-img" style="display:none;" alt="">
+              <svg id="settings-avatar-icon"><use href="#ic-hunter"></use></svg>
+            </div>
+            <div style="flex:1;">
+              <div class="setting-name">Photo</div>
+              <div class="setting-desc">Stored on this device only</div>
+            </div>
+            <button class="btn btn-sm" id="btn-change-photo">Change</button>
+            <button class="link-danger" id="btn-remove-photo" style="display:none;">Remove</button>
+            <input type="file" id="settings-avatar-file" accept="image/*" hidden>
+          </div>
+          <div class="setting-row">
+            <div style="flex:1;">
+              <div class="setting-name">Name</div>
+              <div class="setting-desc">Shown on your Dashboard and Profile</div>
+            </div>
+            <input type="text" id="settings-name-input" placeholder="Your name" maxlength="30" style="max-width:140px; text-align:right; background:var(--panel-raised); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; color:var(--text); font-family:inherit; font-size:0.88rem;">
+          </div>
         </div>
       </div>
 

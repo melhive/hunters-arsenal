@@ -100,6 +100,58 @@
     d.textContent = s;
     return d.innerHTML;
   }
+  function hunterName() {
+    const n = Store.getName();
+    return n ? n : null;
+  }
+
+  // Reads an image file, center-crops it to a square, and resizes it down to
+  // a small JPEG so it stays cheap to store in localStorage (no server, no
+  // upload — the photo never leaves the device).
+  function resizePhotoFile(file, callback) {
+    const SIZE = 256;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        const scale = Math.max(SIZE / img.width, SIZE / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+        callback(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => showToast('Could not read that image');
+      img.src = e.target.result;
+    };
+    reader.onerror = () => showToast('Could not read that image');
+    reader.readAsDataURL(file);
+  }
+
+  // Applies the stored photo (or falls back to the default icon) to every
+  // avatar slot at once — Settings, Profile, and the Dashboard greeting.
+  function refreshAvatars() {
+    const photo = Store.getPhoto();
+    const slots = [
+      { img: $('#settings-avatar-img'), icon: $('#settings-avatar-icon') },
+      { img: $('#profile-avatar-img'), icon: $('#profile-avatar-icon') },
+      { img: $('#dash-greeting-img'), icon: null }
+    ];
+    slots.forEach(({ img, icon }) => {
+      if (!img) return;
+      if (photo) {
+        img.src = photo;
+        img.style.display = 'block';
+        if (icon) icon.style.display = 'none';
+      } else {
+        img.style.display = 'none';
+        if (icon) icon.style.display = 'block';
+      }
+    });
+    const removeBtn = $('#btn-remove-photo');
+    if (removeBtn) removeBtn.style.display = photo ? 'inline' : 'none';
+  }
 
   /* ---------- Theme ---------- */
   function applyTheme(theme) {
@@ -189,14 +241,18 @@
 
       if (after.hunterRank !== before.hunterRank) {
         const rankInfo = Gamify.HUNTER_RANKS.find(r => r.id === after.hunterRank);
+        const name = hunterName();
         SystemWindow.show({
-          type: 'rankup', icon: 'ic-trophy', title: `RANK UP! \u2192 ${rankInfo.label}`,
+          type: 'rankup', icon: 'ic-trophy',
+          title: name ? `RANK UP, ${escapeHTML(name)}! \u2192 ${rankInfo.label}` : `RANK UP! \u2192 ${rankInfo.label}`,
           lines: [`You are now ${rankInfo.label}. Every quest is worth more XP.`]
         });
         if (typeof Sound !== 'undefined') Sound.rankUp();
       } else if (after.level > before.level) {
+        const name = hunterName();
         SystemWindow.show({
-          type: 'levelup', icon: 'ic-star', title: `LEVEL UP! \u2192 LV ${after.level}`,
+          type: 'levelup', icon: 'ic-star',
+          title: name ? `LEVEL UP, ${escapeHTML(name)}! \u2192 LV ${after.level}` : `LEVEL UP! \u2192 LV ${after.level}`,
           lines: [`Your hunter reached Level ${after.level}.`]
         });
         if (typeof Sound !== 'undefined') Sound.levelUp();
@@ -248,8 +304,9 @@
       }
     }
 
+    const name = hunterName();
     SystemWindow.show({
-      type: 'rankup', icon: 'ic-flame', title: 'PERFECT DAY!',
+      type: 'rankup', icon: 'ic-flame', title: name ? `PERFECT DAY, ${escapeHTML(name)}!` : 'PERFECT DAY!',
       lines
     });
     if (typeof Sound !== 'undefined') Sound.perfectDay();
@@ -279,8 +336,9 @@
       if (a.check(ctx)) {
         Store.unlockAchievement(a.id);
         if (!Store.getEquippedTitle()) Store.setEquippedTitle(a.id);
+        const name = hunterName();
         SystemWindow.show({
-          type: 'rankup', icon: a.icon, title: 'TITLE UNLOCKED',
+          type: 'rankup', icon: a.icon, title: name ? `NEW TITLE, ${escapeHTML(name)}!` : 'TITLE UNLOCKED',
           lines: [`"${a.name}" — ${a.desc}`]
         });
         if (typeof Sound !== 'undefined') Sound.achievement();
@@ -290,11 +348,11 @@
 
   const GREETING_LINES = [
     'A new day. The System has logged your quests.',
-    'Rise, Hunter. Today\u2019s trial awaits.',
+    'Rise, {H}. Today\u2019s trial awaits.',
     'The gate resets at midnight. Move before it closes.',
     'Your quest log has refreshed. Clear it before the day ends.',
     'Another chance to grow stronger. Don\u2019t waste it.',
-    'The board is set. Today\u2019s quests are ready.'
+    'The board is set. Today\u2019s quests are ready, {H}.'
   ];
 
   // Once-per-day "morning briefing" — an original System line plus a quick
@@ -308,7 +366,8 @@
     const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, today));
     if (scheduled.length === 0) return; // nothing to brief if there's nothing scheduled
 
-    const line = GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+    const rawLine = GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+    const line = rawLine.replace('{H}', hunterName() || 'Hunter');
     setTimeout(() => {
       SystemWindow.show({
         type: 'default', icon: 'ic-calendar', title: 'DAILY BRIEFING',
@@ -415,6 +474,18 @@
     const today = Store.todayISO();
     $('#dashboard-date').textContent = formatDateLabel(today);
     updateTimeRemaining();
+
+    const name = hunterName();
+    const greeting = $('#dash-greeting');
+    if (greeting) {
+      if (name) {
+        greeting.style.display = 'flex';
+        $('#dash-greeting-text').textContent = `Welcome back, ${name}`;
+        refreshAvatars();
+      } else {
+        greeting.style.display = 'none';
+      }
+    }
 
     const habits = Store.getActiveHabits();
     const allHabits = Store.getHabits();
@@ -862,13 +933,23 @@
     const xp = Gamify.totalXP(logs, perfectDays, penalties);
     const lvl = Gamify.levelFromXP(xp);
     const hunterRank = Gamify.rankForLevel(lvl.level);
-    $('#profile-level').textContent = lvl.level;
+    const name = hunterName();
+    const nameLine = $('#hunter-name-line');
+    const subline = $('#hunter-subline');
+    if (name) {
+      nameLine.innerHTML = `${escapeHTML(name)} <span class="rank-badge" id="profile-rank">${hunterRank.label}</span>`;
+      subline.style.display = 'block';
+      subline.textContent = `Level ${lvl.level} Hunter`;
+    } else {
+      nameLine.innerHTML = `Level <span id="profile-level">${lvl.level}</span> Hunter <span class="rank-badge" id="profile-rank">${hunterRank.label}</span>`;
+      subline.style.display = 'none';
+    }
     const profileRank = $('#profile-rank');
     if (profileRank) {
-      profileRank.textContent = hunterRank.label;
       profileRank.style.setProperty('--rank-color', hunterRank.color);
       profileRank.style.setProperty('--rank-bg', hexAlpha(hunterRank.color, 0.14));
     }
+    refreshAvatars();
 
     const equippedId = Store.getEquippedTitle();
     const equipped = ACHIEVEMENTS.find(a => a.id === equippedId);
@@ -1163,6 +1244,35 @@
 
   /* ---------- Settings ---------- */
   function initSettings() {
+    // Hunter identity: name + photo
+    const nameInput = $('#settings-name-input');
+    nameInput.value = Store.getName();
+    nameInput.addEventListener('change', () => {
+      Store.setName(nameInput.value);
+      nameInput.value = Store.getName(); // reflects trimming/truncation
+      renderDashboard();
+    });
+
+    refreshAvatars();
+    const openPicker = () => $('#settings-avatar-file').click();
+    $('#settings-avatar-wrap').addEventListener('click', openPicker);
+    $('#btn-change-photo').addEventListener('click', openPicker);
+    $('#settings-avatar-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      resizePhotoFile(file, (dataURL) => {
+        Store.setPhoto(dataURL);
+        refreshAvatars();
+        showToast('Photo updated');
+      });
+      e.target.value = '';
+    });
+    $('#btn-remove-photo').addEventListener('click', () => {
+      Store.clearPhoto();
+      refreshAvatars();
+      showToast('Photo removed');
+    });
+
     $('#theme-btn-dark').addEventListener('click', () => setTheme('dark'));
     $('#theme-btn-light').addEventListener('click', () => setTheme('light'));
 
@@ -1236,6 +1346,21 @@
     });
   }
 
+  function initProfileAvatar() {
+    const openPicker = () => $('#profile-avatar-file').click();
+    $('#profile-avatar-wrap').addEventListener('click', openPicker);
+    $('#profile-avatar-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      resizePhotoFile(file, (dataURL) => {
+        Store.setPhoto(dataURL);
+        refreshAvatars();
+        showToast('Photo updated');
+      });
+      e.target.value = '';
+    });
+  }
+
   /* ---------- History week nav ---------- */
   function initHistoryNav() {
     $('#week-prev').addEventListener('click', () => { state.weekOffset--; renderHistory(); });
@@ -1260,6 +1385,8 @@
     }
 
     function finish() {
+      const nameInput = $('#ob-name-input');
+      if (nameInput && nameInput.value.trim()) Store.setName(nameInput.value);
       Store.setOnboarded();
       overlay.classList.add('hidden');
     }
@@ -1368,6 +1495,7 @@
     initServiceWorker();
     initOnboarding();
     initDragReorder();
+    initProfileAvatar();
 
     checkDailyPenalty();
     renderDashboard();
