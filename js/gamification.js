@@ -135,6 +135,21 @@ function localISO(d) {
   return new Date(d - tz).toISOString().slice(0, 10);
 }
 
+// Life Clock — purely a live calculation from birthdate + estimated lifespan,
+// never stored/cached, so it always reflects the current moment with no
+// manual "deduct a day" bookkeeping needed anywhere.
+const DAYS_PER_YEAR = 365.25; // accounts for leap years on average
+function lifeClockStats(birthdateISO, lifespanYears, nowDate) {
+  const now = nowDate || new Date();
+  const birth = new Date(birthdateISO + 'T00:00:00');
+  const msPerDay = 86400000;
+  const daysLived = Math.floor((now - birth) / msPerDay);
+  const totalDays = Math.round(lifespanYears * DAYS_PER_YEAR);
+  const daysRemaining = Math.max(0, totalDays - daysLived);
+  const ageYears = daysLived / DAYS_PER_YEAR;
+  return { daysLived, totalDays, daysRemaining, ageYears };
+}
+
 function currentStreak(habit, logs, todayISO) {
   let streak = 0;
   let cursor = new Date(todayISO + 'T00:00:00');
@@ -271,5 +286,6 @@ const Gamify = {
   HUNTER_RANKS, BASE_XP, rankForLevel, xpForCompletion, xpValueOf,
   STATS, DEFAULT_STAT, CLASS_TIERS, currentClass,
   isScheduledForDate, countCompletions, currentStreak, longestStreak,
-  totalXP, statTotals, levelFromXP, isPerfectDay, perfectDayStreak
+  totalXP, statTotals, levelFromXP, isPerfectDay, perfectDayStreak,
+  lifeClockStats
 };

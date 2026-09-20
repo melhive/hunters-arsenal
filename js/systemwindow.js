@@ -29,9 +29,10 @@ const SystemWindow = (function () {
     const r = root();
     if (!r) { advance(); return; }
     r.innerHTML = '';
+    r.classList.toggle('sw-root-big', !!opts.big);
 
     const box = document.createElement('div');
-    box.className = 'sw-box sw-type-' + (opts.type || 'default');
+    box.className = 'sw-box sw-type-' + (opts.type || 'default') + (opts.big ? ' sw-big' : '');
 
     const linesHTML = (opts.lines || []).map(l => `<div class="sw-line">${l}</div>`).join('');
     const hasActions = opts.actions && opts.actions.length > 0;
@@ -61,7 +62,7 @@ const SystemWindow = (function () {
       dismissed = true;
       box.classList.remove('sw-show');
       box.classList.add('sw-hide');
-      setTimeout(() => { box.remove(); advance(); }, 260);
+      setTimeout(() => { box.remove(); r.classList.remove('sw-root-big'); advance(); }, 260);
     }
 
     box.querySelector('.sw-close').addEventListener('click', dismiss);
@@ -89,6 +90,8 @@ const SystemWindow = (function () {
       box.classList.add('sw-show');
       if (opts.type === 'levelup' || opts.type === 'rankup') {
         if (typeof Effects !== 'undefined') Effects.celebrateTop();
+      } else if (opts.type === 'quest-cleared') {
+        if (typeof Effects !== 'undefined') Effects.burstConfetti(window.innerWidth / 2, window.innerHeight * 0.35, 50);
       }
     }));
   }

@@ -16,6 +16,8 @@
   const PERFECT_DAY_BASE_BONUS = 15;
   const PENALTY_PER_MISS = 8;
   const PENALTY_CAP = 30; // per day, however many habits were missed
+  const QUEST_CLEAR_BONUS = 25; // extra XP for accepting the Daily Quest and clearing it
+  const QUEST_FAIL_MULTIPLIER = 2; // penalty multiplier when a quest was accepted but failed
 
   const ACHIEVEMENTS = [
     { id: 'first-blood', name: 'First Blood', desc: 'Complete your first habit', icon: 'ic-flame', check: ctx => ctx.totalCompletions >= 1 },
@@ -87,6 +89,18 @@
     const duration = action ? 4500 : 2200;
     showToast._timer = setTimeout(() => t.classList.remove('show'), duration);
   }
+
+  // Small inline "Saved" flash next to a Settings Save button — fades in,
+  // holds briefly, fades out. Distinct from the global toast since it's
+  // meant to feel local to the field being saved.
+  function showSaveConfirm(elId) {
+    const el = $(elId);
+    if (!el) return;
+    el.classList.add('show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+
   function iconSVG(iconId, extraStyle) {
     return `<svg class="icon"${extraStyle ? ` style="${extraStyle}"` : ''}><use href="#${iconId}"></use></svg>`;
   }
@@ -108,25 +122,111 @@
   // Reads an image file, center-crops it to a square, and resizes it down to
   // a small JPEG so it stays cheap to store in localStorage (no server, no
   // upload — the photo never leaves the device).
-  function resizePhotoFile(file, callback) {
-    const SIZE = 256;
+  /* ---------- Photo crop modal ---------- */
+  const CROP_STAGE_SIZE = 300;
+  const CROP_OUTPUT_SIZE = 256;
+  let cropState = null;
+
+  function openCropModal(file, onSaveCallback) {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = SIZE; canvas.height = SIZE;
-        const ctx = canvas.getContext('2d');
-        const scale = Math.max(SIZE / img.width, SIZE / img.height);
-        const w = img.width * scale, h = img.height * scale;
-        ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
-        callback(canvas.toDataURL('image/jpeg', 0.85));
+        const baseScale = Math.max(CROP_STAGE_SIZE / img.width, CROP_STAGE_SIZE / img.height);
+        cropState = { img, baseScale, scale: 1, offsetX: 0, offsetY: 0, onSaveCallback };
+        centerCrop();
+        $('#crop-zoom').value = 100;
+        drawCrop();
+        openModal('#crop-modal');
       };
       img.onerror = () => showToast('Could not read that image');
       img.src = e.target.result;
     };
     reader.onerror = () => showToast('Could not read that image');
     reader.readAsDataURL(file);
+  }
+
+  function centerCrop() {
+    if (!cropState) return;
+    const { img, baseScale, scale } = cropState;
+    const effScale = baseScale * scale;
+    cropState.offsetX = (CROP_STAGE_SIZE - img.width * effScale) / 2;
+    cropState.offsetY = (CROP_STAGE_SIZE - img.height * effScale) / 2;
+  }
+
+  function clampCropOffset() {
+    if (!cropState) return;
+    const { img, baseScale, scale } = cropState;
+    const effScale = baseScale * scale;
+    const w = img.width * effScale, h = img.height * effScale;
+    cropState.offsetX = Math.min(0, Math.max(CROP_STAGE_SIZE - w, cropState.offsetX));
+    cropState.offsetY = Math.min(0, Math.max(CROP_STAGE_SIZE - h, cropState.offsetY));
+  }
+
+  function drawCrop() {
+    if (!cropState) return;
+    const canvas = $('#crop-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, CROP_STAGE_SIZE, CROP_STAGE_SIZE);
+    const { img, baseScale, scale, offsetX, offsetY } = cropState;
+    const effScale = baseScale * scale;
+    ctx.drawImage(img, offsetX, offsetY, img.width * effScale, img.height * effScale);
+  }
+
+  function initCropModal() {
+    const stageWrap = $('.crop-stage-wrap');
+    const zoomSlider = $('#crop-zoom');
+
+    zoomSlider.addEventListener('input', () => {
+      if (!cropState) return;
+      cropState.scale = Number(zoomSlider.value) / 100;
+      clampCropOffset();
+      drawCrop();
+    });
+
+    let dragging = false, startX = 0, startY = 0, startOffsetX = 0, startOffsetY = 0;
+    stageWrap.addEventListener('pointerdown', (e) => {
+      if (!cropState) return;
+      dragging = true;
+      startX = e.clientX; startY = e.clientY;
+      startOffsetX = cropState.offsetX; startOffsetY = cropState.offsetY;
+      try { stageWrap.setPointerCapture(e.pointerId); } catch (err) { /* not critical */ }
+    });
+    stageWrap.addEventListener('pointermove', (e) => {
+      if (!dragging || !cropState) return;
+      const rect = stageWrap.getBoundingClientRect();
+      const displayScale = CROP_STAGE_SIZE / rect.width;
+      cropState.offsetX = startOffsetX + (e.clientX - startX) * displayScale;
+      cropState.offsetY = startOffsetY + (e.clientY - startY) * displayScale;
+      clampCropOffset();
+      drawCrop();
+    });
+    stageWrap.addEventListener('pointerup', () => { dragging = false; });
+    stageWrap.addEventListener('pointercancel', () => { dragging = false; });
+
+    $('#crop-modal-close').addEventListener('click', () => { closeModal('#crop-modal'); cropState = null; });
+    $('#crop-modal').addEventListener('click', (e) => { if (e.target.id === 'crop-modal') { closeModal('#crop-modal'); cropState = null; } });
+
+    $('#crop-confirm').addEventListener('click', () => {
+      if (!cropState) return;
+      const { img, baseScale, scale, offsetX, offsetY, onSaveCallback } = cropState;
+      const effScale = baseScale * scale;
+      const exportScale = CROP_OUTPUT_SIZE / CROP_STAGE_SIZE;
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = CROP_OUTPUT_SIZE; outCanvas.height = CROP_OUTPUT_SIZE;
+      const octx = outCanvas.getContext('2d');
+      octx.drawImage(
+        img,
+        offsetX * exportScale, offsetY * exportScale,
+        img.width * effScale * exportScale, img.height * effScale * exportScale
+      );
+      Store.setPhoto(outCanvas.toDataURL('image/jpeg', 0.85));
+      closeModal('#crop-modal');
+      cropState = null;
+      if (onSaveCallback) onSaveCallback();
+      showToast('Photo updated');
+      if (typeof Sound !== 'undefined') Sound.click();
+    });
   }
 
   // Applies the stored photo (or falls back to the default icon) to every
@@ -289,10 +389,9 @@
 
     const frozenDates = Store.getFrozenDates();
     const streak = Gamify.perfectDayStreak(habits, logs, frozenDates, { ...perfectDays, [dateISO]: 1 }, Store.todayISO());
-    const bonus = PERFECT_DAY_BASE_BONUS + Math.min(streak, 10) * 5;
+    const questAccepted = Store.getDailyQuestChoice(dateISO) === 'accepted';
+    const bonus = PERFECT_DAY_BASE_BONUS + Math.min(streak, 10) * 5 + (questAccepted ? QUEST_CLEAR_BONUS : 0);
     Store.setPerfectDay(dateISO, bonus);
-
-    const lines = [`Every scheduled habit complete. +${bonus} bonus XP.`, `Combo streak: ${streak} day${streak === 1 ? '' : 's'}.`];
 
     let freezeAwarded = false;
     if (streak > 0 && streak % 7 === 0) {
@@ -300,16 +399,28 @@
       if (current < MAX_FREEZES) {
         Store.setFreezeCount(current + 1);
         freezeAwarded = true;
-        lines.push(`+1 Streak Freeze earned! (${current + 1}/${MAX_FREEZES})`);
       }
     }
 
     const name = hunterName();
-    SystemWindow.show({
-      type: 'rankup', icon: 'ic-flame', title: name ? `PERFECT DAY, ${escapeHTML(name)}!` : 'PERFECT DAY!',
-      lines
-    });
-    if (typeof Sound !== 'undefined') Sound.perfectDay();
+    if (questAccepted) {
+      const lines = [`Daily Quest cleared. +${bonus} bonus XP.`, `Combo streak: ${streak} day${streak === 1 ? '' : 's'}.`];
+      if (freezeAwarded) lines.push(`+1 Streak Freeze earned! (${Store.getFreezeCount()}/${MAX_FREEZES})`);
+      SystemWindow.show({
+        type: 'quest-cleared', big: true, icon: 'ic-trophy',
+        title: name ? `QUEST CLEARED, ${escapeHTML(name)}!` : 'QUEST CLEARED!',
+        lines, duration: 5400
+      });
+      if (typeof Sound !== 'undefined') Sound.rankUp();
+    } else {
+      const lines = [`Every scheduled habit complete. +${bonus} bonus XP.`, `Combo streak: ${streak} day${streak === 1 ? '' : 's'}.`];
+      if (freezeAwarded) lines.push(`+1 Streak Freeze earned! (${Store.getFreezeCount()}/${MAX_FREEZES})`);
+      SystemWindow.show({
+        type: 'rankup', icon: 'ic-flame', title: name ? `PERFECT DAY, ${escapeHTML(name)}!` : 'PERFECT DAY!',
+        lines
+      });
+      if (typeof Sound !== 'undefined') Sound.perfectDay();
+    }
   }
 
   function checkAchievements() {
@@ -346,35 +457,53 @@
     });
   }
 
-  const GREETING_LINES = [
-    'A new day. The System has logged your quests.',
-    'Rise, {H}. Today\u2019s trial awaits.',
-    'The gate resets at midnight. Move before it closes.',
-    'Your quest log has refreshed. Clear it before the day ends.',
-    'Another chance to grow stronger. Don\u2019t waste it.',
-    'The board is set. Today\u2019s quests are ready, {H}.'
-  ];
+  let dqCountdownStop = null;
 
-  // Once-per-day "morning briefing" — an original System line plus a quick
-  // summary of what's scheduled. Shown at most once per calendar day.
-  function checkDailyGreeting() {
+  function populateDailyQuestList(scheduled) {
+    const list = $('#dq-habit-list');
+    list.innerHTML = '';
+    scheduled.forEach(h => {
+      const row = el('div', 'dq-habit-row');
+      row.innerHTML = `<div class="habit-icon" style="background:${hexAlpha(h.color, 0.16)}; color:${h.color}">${iconSVG(h.icon)}</div><span>${escapeHTML(h.name)}</span>`;
+      list.appendChild(row);
+    });
+  }
+
+  function closeDailyQuestNotice() {
+    $('#daily-quest-notice').classList.remove('open');
+    if (dqCountdownStop) { dqCountdownStop(); dqCountdownStop = null; }
+  }
+
+  // Once per day: a full-screen Daily Quest notice listing today's habits.
+  // Shown until the hunter explicitly Accepts or Declines — no other way to
+  // dismiss it, by design. Accepting raises the stakes (bigger reward if
+  // cleared, bigger penalty if not); declining or ignoring it falls back to
+  // the normal, gentle penalty system unchanged.
+  function checkDailyQuestNotice() {
     const today = Store.todayISO();
-    if (Store.getLastGreetingDate() === today) return;
-    Store.setLastGreetingDate(today);
+    if (Store.getDailyQuestChoice(today) !== null) return; // already decided today
 
     const habits = Store.getActiveHabits();
     const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, today));
-    if (scheduled.length === 0) return; // nothing to brief if there's nothing scheduled
+    if (scheduled.length === 0) return; // nothing to quest about today
 
-    const rawLine = GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
-    const line = rawLine.replace('{H}', hunterName() || 'Hunter');
-    setTimeout(() => {
-      SystemWindow.show({
-        type: 'default', icon: 'ic-calendar', title: 'DAILY BRIEFING',
-        lines: [line, `${scheduled.length} quest${scheduled.length === 1 ? '' : 's'} scheduled today.`],
-        duration: 4600
-      });
-    }, 600);
+    populateDailyQuestList(scheduled);
+    $('#daily-quest-notice').classList.add('open');
+    dqCountdownStop = startMidnightCountdown('#dq-countdown');
+  }
+
+  function initDailyQuestNotice() {
+    $('#dq-accept').addEventListener('click', () => {
+      Store.setDailyQuestChoice(Store.todayISO(), 'accepted');
+      closeDailyQuestNotice();
+      if (typeof Sound !== 'undefined') Sound.click();
+      showToast('Daily Quest accepted. Good luck, hunter.');
+    });
+    $('#dq-decline').addEventListener('click', () => {
+      Store.setDailyQuestChoice(Store.todayISO(), 'declined');
+      closeDailyQuestNotice();
+      if (typeof Sound !== 'undefined') Sound.click();
+    });
   }
 
   // Offer a streak freeze if yesterday broke a perfect-day combo. Asked once per date.
@@ -430,14 +559,26 @@
     const missed = scheduled.filter(h => !Store.isDone(h.id, yesterday));
     if (missed.length === 0) return;
 
-    const amount = Math.min(missed.length * PENALTY_PER_MISS, PENALTY_CAP);
+    const questAccepted = Store.getDailyQuestChoice(yesterday) === 'accepted';
+    const baseAmount = Math.min(missed.length * PENALTY_PER_MISS, PENALTY_CAP);
+    const amount = questAccepted ? baseAmount * QUEST_FAIL_MULTIPLIER : baseAmount;
     Store.setPenalty(yesterday, amount);
 
+    const name = hunterName();
     setTimeout(() => {
-      SystemWindow.show({
-        type: 'penalty', icon: 'ic-ban', title: 'PENALTY QUEST ISSUED',
-        lines: [`${missed.length} quest${missed.length === 1 ? '' : 's'} went unfinished yesterday.`, `\u2212${amount} XP`]
-      });
+      if (questAccepted) {
+        SystemWindow.show({
+          type: 'quest-failed', big: true, icon: 'ic-ban',
+          title: name ? `QUEST FAILED, ${escapeHTML(name)}!` : 'QUEST FAILED!',
+          lines: [`${missed.length} accepted quest${missed.length === 1 ? '' : 's'} went unfinished.`, `\u2212${amount} XP`],
+          duration: 5400
+        });
+      } else {
+        SystemWindow.show({
+          type: 'penalty', icon: 'ic-ban', title: 'PENALTY QUEST ISSUED',
+          lines: [`${missed.length} quest${missed.length === 1 ? '' : 's'} went unfinished yesterday.`, `\u2212${amount} XP`]
+        });
+      }
       if (typeof Sound !== 'undefined') Sound.penalty();
       renderDashboard();
     }, 900);
@@ -470,6 +611,96 @@
     el.textContent = `${hours}h ${minutes}m left today`;
   }
 
+  function msUntilMidnight() {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    return midnight - now;
+  }
+
+  function formatHMS(ms) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+
+  // Ticks an element's textContent with HH:MM:SS remaining until midnight,
+  // once per second. Returns a stop function. Safe to call even if the
+  // element doesn't exist yet (no-ops).
+  function startMidnightCountdown(elId) {
+    const el = $(elId);
+    if (!el) return () => {};
+    const tick = () => { el.textContent = formatHMS(msUntilMidnight()); };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }
+
+  /* ---------- Life Clock ---------- */
+  function renderLifeClockMini() {
+    const card = $('#life-clock-mini');
+    if (!card) return;
+    if (!Store.hasLifeClockSetup()) { card.style.display = 'none'; return; }
+
+    const stats = Gamify.lifeClockStats(Store.getBirthdate(), Store.getLifespanYears());
+    card.style.display = 'flex';
+    $('#life-clock-mini-days').textContent = stats.daysRemaining.toLocaleString() + ' days';
+    const pctLived = stats.totalDays > 0 ? Math.min(100, (stats.daysLived / stats.totalDays) * 100) : 0;
+    $('#life-clock-mini-fill').style.width = pctLived + '%';
+  }
+
+  let lifeClockCountdownStop = null;
+  let emberInterval = null;
+
+  function spawnEmber() {
+    const wrap = $('#life-clock-embers');
+    if (!wrap) return;
+    const ember = document.createElement('div');
+    ember.className = 'ember';
+    const size = 2 + Math.random() * 4;
+    ember.style.width = size + 'px';
+    ember.style.height = size + 'px';
+    ember.style.left = Math.random() * 100 + '%';
+    ember.style.setProperty('--drift', (Math.random() * 60 - 30) + 'px');
+    const duration = 5 + Math.random() * 5;
+    ember.style.animationDuration = duration + 's';
+    wrap.appendChild(ember);
+    setTimeout(() => ember.remove(), duration * 1000 + 200);
+  }
+
+  function openLifeClock() {
+    if (!Store.hasLifeClockSetup()) {
+      showToast('Set your birthdate and estimated lifespan in Settings first');
+      return;
+    }
+    const stats = Gamify.lifeClockStats(Store.getBirthdate(), Store.getLifespanYears());
+    $('#life-clock-days').textContent = stats.daysRemaining.toLocaleString();
+    $('#life-clock-overlay').classList.add('open');
+    lifeClockCountdownStop = startMidnightCountdown('#life-clock-countdown');
+
+    const wrap = $('#life-clock-embers');
+    if (wrap) wrap.innerHTML = '';
+    for (let i = 0; i < 8; i++) setTimeout(spawnEmber, i * 300);
+    emberInterval = setInterval(spawnEmber, 700);
+  }
+
+  function closeLifeClock() {
+    $('#life-clock-overlay').classList.remove('open');
+    if (lifeClockCountdownStop) { lifeClockCountdownStop(); lifeClockCountdownStop = null; }
+    if (emberInterval) { clearInterval(emberInterval); emberInterval = null; }
+  }
+
+  function initLifeClock() {
+    $('#life-clock-mini').addEventListener('click', openLifeClock);
+    $('#life-clock-close').addEventListener('click', closeLifeClock);
+    $('#life-clock-overlay').addEventListener('click', (e) => {
+      if (e.target.id === 'life-clock-overlay') closeLifeClock();
+    });
+  }
+
   function renderDashboard() {
     const today = Store.todayISO();
     $('#dashboard-date').textContent = formatDateLabel(today);
@@ -492,6 +723,7 @@
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
     const penalties = Store.getPenalties();
+    renderLifeClockMini();
     const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, today));
 
     const doneCount = scheduled.filter(h => Store.isDone(h.id, today)).length;
@@ -1244,13 +1476,16 @@
 
   /* ---------- Settings ---------- */
   function initSettings() {
-    // Hunter identity: name + photo
+    // Hunter identity: name + photo (explicit Save, no auto-save on blur)
     const nameInput = $('#settings-name-input');
     nameInput.value = Store.getName();
-    nameInput.addEventListener('change', () => {
+
+    $('#btn-save-identity').addEventListener('click', () => {
       Store.setName(nameInput.value);
       nameInput.value = Store.getName(); // reflects trimming/truncation
       renderDashboard();
+      showSaveConfirm('#identity-save-confirm');
+      if (typeof Sound !== 'undefined') Sound.click();
     });
 
     refreshAvatars();
@@ -1260,10 +1495,9 @@
     $('#settings-avatar-file').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      resizePhotoFile(file, (dataURL) => {
-        Store.setPhoto(dataURL);
+      openCropModal(file, () => {
         refreshAvatars();
-        showToast('Photo updated');
+        showSaveConfirm('#identity-save-confirm');
       });
       e.target.value = '';
     });
@@ -1271,6 +1505,33 @@
       Store.clearPhoto();
       refreshAvatars();
       showToast('Photo removed');
+    });
+
+    // Life Clock setup
+    const birthdateInput = $('#settings-birthdate-input');
+    const lifespanInput = $('#settings-lifespan-input');
+    birthdateInput.value = Store.getBirthdate() || '';
+    lifespanInput.value = Store.getLifespanYears() || '';
+
+    $('#btn-save-lifeclock').addEventListener('click', () => {
+      const bd = birthdateInput.value;
+      const ls = Number(lifespanInput.value);
+      if (bd) {
+        const bdDate = new Date(bd + 'T00:00:00');
+        if (isNaN(bdDate.getTime()) || bdDate > new Date()) {
+          showToast('Please enter a valid past birthdate');
+          return;
+        }
+      }
+      if (lifespanInput.value && (!ls || ls <= 0 || ls > 130)) {
+        showToast('Please enter a realistic lifespan in years');
+        return;
+      }
+      Store.setBirthdate(bd || null);
+      Store.setLifespanYears(lifespanInput.value ? ls : null);
+      renderDashboard();
+      showSaveConfirm('#lifeclock-save-confirm');
+      if (typeof Sound !== 'undefined') Sound.click();
     });
 
     $('#theme-btn-dark').addEventListener('click', () => setTheme('dark'));
@@ -1352,11 +1613,7 @@
     $('#profile-avatar-file').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      resizePhotoFile(file, (dataURL) => {
-        Store.setPhoto(dataURL);
-        refreshAvatars();
-        showToast('Photo updated');
-      });
+      openCropModal(file, () => refreshAvatars());
       e.target.value = '';
     });
   }
@@ -1496,10 +1753,13 @@
     initOnboarding();
     initDragReorder();
     initProfileAvatar();
+    initDailyQuestNotice();
+    initLifeClock();
+    initCropModal();
 
     checkDailyPenalty();
     renderDashboard();
-    checkDailyGreeting();
+    checkDailyQuestNotice();
     checkForNewVersion();
     checkAchievements();
     setTimeout(checkFreezeOffer, 1300);

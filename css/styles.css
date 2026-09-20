@@ -528,14 +528,27 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
 }
 .hunter-avatar svg { width: 34px; height: 34px; color: var(--accent); }
 .hunter-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.avatar-edit-badge {
-  position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%;
-  background: var(--accent); border: 2px solid var(--panel);
-  display: flex; align-items: center; justify-content: center; color: #0f1216;
-}
-.avatar-edit-badge svg { width: 12px; height: 12px; color: #0f1216; }
+.hunter-avatar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+.avatar-tap-hint { font-size: 0.62rem; color: var(--text-faint); letter-spacing: 0.03em; }
 .hunter-name { font-family: var(--font-display); font-size: 1.3rem; }
 .hunter-subline { font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ===== Save confirmation (Settings) ===== */
+.save-confirm {
+  font-size: 0.78rem; color: var(--accent); opacity: 0; transition: opacity 0.3s var(--ease);
+}
+.save-confirm.show { opacity: 1; }
+
+/* ===== Photo crop modal ===== */
+.crop-stage-wrap {
+  width: 100%; max-width: 300px; margin: 0 auto 16px;
+  border-radius: 50%; overflow: hidden; border: 2px solid var(--border);
+  cursor: grab; touch-action: none;
+}
+.crop-stage-wrap:active { cursor: grabbing; }
+.crop-canvas { display: block; width: 100%; height: auto; background: var(--panel-raised); }
+.crop-zoom-slider { width: 100%; accent-color: var(--accent); }
+.crop-hint { text-align: center; font-size: 0.76rem; color: var(--text-faint); margin: -6px 0 16px; }
 
 /* ===== Settings identity avatar ===== */
 .identity-avatar-wrap {
@@ -654,6 +667,46 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
 .sw-type-penalty .sw-dot, .sw-type-penalty .sw-label, .sw-type-penalty .sw-icon-wrap { color: var(--danger); }
 .sw-type-penalty .sw-icon-wrap { background: rgba(232,99,108,0.12); border-color: rgba(232,99,108,0.3); }
 .sw-type-penalty .sw-progress-fill { background: var(--danger); }
+
+/* ===== Big notices: Quest Cleared / Quest Failed ===== */
+#system-window-root.sw-root-big {
+  top: 0; bottom: 0; align-items: center;
+  background: rgba(6,8,10,0.75);
+  pointer-events: none;
+}
+#system-window-root.sw-root-big .sw-box { pointer-events: auto; }
+.sw-box.sw-big {
+  max-width: 380px; padding: 30px 26px 26px; text-align: center;
+  border-width: 1.5px;
+}
+.sw-big .sw-header { justify-content: center; margin-bottom: 18px; }
+.sw-big .sw-content { flex-direction: column; align-items: center; gap: 14px; }
+.sw-big .sw-icon-wrap { width: 58px; height: 58px; border-radius: 50%; }
+.sw-big .sw-icon-wrap svg { width: 28px; height: 28px; }
+.sw-big .sw-title { font-size: 1.6rem; letter-spacing: 0.03em; margin-bottom: 6px; }
+.sw-big .sw-lines { align-items: center; }
+.sw-big .sw-line { font-size: 0.86rem; }
+
+.sw-type-quest-cleared {
+  border-color: rgba(124,212,94,0.6);
+  box-shadow: 0 0 0 1px rgba(124,212,94,0.12), 0 20px 50px rgba(0,0,0,0.55), 0 0 46px rgba(124,212,94,0.35);
+  animation: quest-cleared-pulse 1.6s ease-in-out infinite;
+}
+@keyframes quest-cleared-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(124,212,94,0.12), 0 20px 50px rgba(0,0,0,0.55), 0 0 46px rgba(124,212,94,0.35); }
+  50% { box-shadow: 0 0 0 1px rgba(124,212,94,0.2), 0 20px 50px rgba(0,0,0,0.55), 0 0 70px rgba(124,212,94,0.55); }
+}
+.sw-type-quest-cleared .sw-dot, .sw-type-quest-cleared .sw-label, .sw-type-quest-cleared .sw-icon-wrap, .sw-type-quest-cleared .sw-title { color: var(--accent-strong); }
+.sw-type-quest-cleared .sw-icon-wrap { background: var(--accent-dim); border-color: rgba(124,212,94,0.4); }
+.sw-type-quest-cleared .sw-progress-fill { background: var(--accent); }
+
+.sw-type-quest-failed {
+  border-color: rgba(232,60,70,0.6);
+  box-shadow: 0 0 0 1px rgba(232,60,70,0.12), 0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(232,60,70,0.3);
+}
+.sw-type-quest-failed .sw-dot, .sw-type-quest-failed .sw-label, .sw-type-quest-failed .sw-icon-wrap, .sw-type-quest-failed .sw-title { color: #ff5a63; }
+.sw-type-quest-failed .sw-icon-wrap { background: rgba(232,60,70,0.14); border-color: rgba(232,60,70,0.4); }
+.sw-type-quest-failed .sw-progress-fill { background: #ff5a63; }
 
 /* ===== Onboarding ===== */
 #onboarding {
@@ -823,3 +876,124 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
 .quest-ring-label { font-size: 0.6rem; color: var(--text-faint); letter-spacing: 0.06em; margin-top: 2px; }
 .quest-progress-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
 .quest-progress-sub { font-size: 0.82rem; color: var(--text-muted); }
+
+/* ===== Fullscreen notice base (Daily Quest, Life Clock) ===== */
+.fullscreen-notice {
+  position: fixed; inset: 0; z-index: 850;
+  background: rgba(6,8,10,0.88);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 0.35s var(--ease), visibility 0.35s var(--ease);
+}
+.fullscreen-notice.open { opacity: 1; visibility: visible; pointer-events: auto; }
+
+/* ===== Daily Quest Notice ===== */
+.dq-card {
+  position: relative; width: 100%; max-width: 400px;
+  background: var(--panel); border: 1px solid rgba(124,212,94,0.35);
+  border-radius: 14px; padding: 30px 24px 24px; overflow: hidden;
+  box-shadow: 0 0 50px rgba(124,212,94,0.14);
+  text-align: center;
+  max-height: 90vh; overflow-y: auto;
+}
+.dq-scanline {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.04;
+  background: repeating-linear-gradient(0deg, #fff 0px, #fff 1px, transparent 1px, transparent 3px);
+}
+.dq-countdown-wrap { position: absolute; top: 16px; right: 18px; text-align: right; }
+.dq-countdown { font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; }
+.dq-countdown-label { font-size: 0.6rem; color: var(--text-faint); letter-spacing: 0.05em; margin-top: 1px; }
+.dq-card .ob-icon { margin: 0 auto 14px; }
+.dq-card h2 { font-size: 1.4rem; margin-bottom: 16px; }
+.dq-habit-list {
+  display: flex; flex-direction: column; gap: 7px; text-align: left;
+  margin-bottom: 18px; max-height: 180px; overflow-y: auto;
+}
+.dq-habit-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  background: var(--panel-raised); border-radius: var(--radius-sm); border: 1px solid var(--border-soft);
+}
+.dq-habit-row .habit-icon { width: 28px; height: 28px; flex-shrink: 0; }
+.dq-habit-row span { font-size: 0.85rem; font-weight: 500; }
+.dq-warning {
+  background: #0a0b0c; border: 1px solid rgba(232,99,108,0.4); border-radius: var(--radius-sm);
+  padding: 14px 12px; margin-bottom: 20px;
+  animation: dq-warning-glow 2.2s ease-in-out infinite;
+}
+.dq-warning-line1 { color: #ff5a63; font-family: var(--font-mono); font-size: 0.82rem; font-weight: 600; line-height: 1.4; }
+.dq-warning-line2 { color: #c94850; font-family: var(--font-mono); font-size: 0.74rem; margin-top: 5px; }
+@keyframes dq-warning-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(232,60,70,0.15), inset 0 0 12px rgba(232,60,70,0.05); border-color: rgba(232,99,108,0.35); }
+  50% { box-shadow: 0 0 22px rgba(232,60,70,0.35), inset 0 0 18px rgba(232,60,70,0.12); border-color: rgba(232,99,108,0.7); }
+}
+.dq-actions { display: flex; gap: 10px; }
+.dq-actions .btn { flex: 1; }
+
+/* ===== Life Clock — Dashboard mini card ===== */
+.life-clock-mini {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 16px; cursor: pointer;
+  border-color: var(--border-soft);
+  transition: border-color 0.2s var(--ease);
+}
+.life-clock-mini:hover { border-color: var(--text-faint); }
+.life-clock-mini-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--text-faint); font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.life-clock-mini-label svg { width: 14px; height: 14px; color: #5a8a4a; }
+.life-clock-mini-days { font-family: var(--font-display); font-size: 0.95rem; color: var(--text-muted); white-space: nowrap; }
+.life-clock-mini-track { flex: 1; height: 4px; border-radius: 3px; background: var(--border-soft); overflow: hidden; }
+.life-clock-mini-fill { height: 100%; background: #4a7a3a; border-radius: 3px; transition: width 0.6s var(--ease); }
+
+/* ===== Life Clock — full overlay ===== */
+.life-clock-overlay {
+  background: radial-gradient(ellipse at center, #0f1a0f 0%, #06080a 70%);
+  z-index: 870;
+  flex-direction: column;
+}
+.life-clock-embers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.ember {
+  position: absolute; bottom: -10px; border-radius: 50%;
+  background: radial-gradient(circle, #b8f29a 0%, #7cd45e 60%, transparent 100%);
+  opacity: 0;
+  animation-name: ember-drift;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+}
+@keyframes ember-drift {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.3; }
+  100% { transform: translateY(-100vh) translateX(var(--drift, 20px)); opacity: 0; }
+}
+.life-clock-close {
+  position: absolute; top: 20px; right: 20px; z-index: 2;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-muted); font-size: 1.3rem; line-height: 1; cursor: pointer;
+}
+.life-clock-content { position: relative; text-align: center; z-index: 1; }
+.life-clock-glow {
+  position: absolute; left: 50%; top: 50%; width: 280px; height: 280px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(124,212,94,0.35) 0%, rgba(124,212,94,0.08) 45%, transparent 72%);
+  border-radius: 50%;
+  animation: life-heartbeat 1.2s ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes life-heartbeat {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.94); opacity: 0.75; }
+  50% { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
+}
+.life-clock-days {
+  font-family: var(--font-display); font-size: 3.6rem; font-weight: 700;
+  color: #d4ffc2; line-height: 1;
+  text-shadow: 0 0 24px rgba(124,212,94,0.7), 0 0 60px rgba(124,212,94,0.3);
+}
+.life-clock-days-label { font-size: 0.78rem; color: #8fb37e; letter-spacing: 0.06em; margin-top: 8px; font-family: var(--font-mono); }
+.life-clock-divider { width: 60px; height: 1px; background: rgba(124,212,94,0.25); margin: 26px auto; }
+.life-clock-today-label { font-size: 0.66rem; color: #6a8a5a; letter-spacing: 0.14em; font-family: var(--font-mono); margin-bottom: 8px; }
+.life-clock-countdown { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; color: #b8f29a; letter-spacing: 0.04em; }

@@ -8,9 +8,22 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '2.3.0';
+self.APP_VERSION = '2.4.0';
 
 self.CHANGELOG = [
+  {
+    version: '2.4.0',
+    date: '2026-09-19',
+    changes: [
+      'Daily Quest notice \u2014 once a day, review your scheduled habits and choose to Accept or Decline the day\u2019s quest.',
+      'Accept and clear every habit \u2192 a big QUEST CLEARED celebration and bonus XP.',
+      'Accept and fall short \u2192 QUEST FAILED, with a larger (2x) XP penalty. Decline, or skip it \u2014 the normal, gentle penalty applies unchanged.',
+      'Life Clock \u2014 set your birthdate and an estimated lifespan in Settings to see estimated days remaining, with a full-screen glowing view and a live countdown to midnight.',
+      'Fixed: the broken avatar edit badge is gone, replaced with a clear "Tap to change" hint.',
+      'Photos can now be cropped and zoomed before saving.',
+      'Name and photo now save via an explicit Save button, with an inline confirmation.'
+    ]
+  },
   {
     version: '2.3.0',
     date: '2026-09-18',

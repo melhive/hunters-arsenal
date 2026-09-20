@@ -267,6 +267,43 @@
   </div>
 </div>
 
+<!-- Daily Quest Notice (once per day) -->
+<div id="daily-quest-notice" class="fullscreen-notice">
+  <div class="dq-card">
+    <div class="dq-scanline"></div>
+    <div class="dq-countdown-wrap">
+      <div class="dq-countdown" id="dq-countdown">00:00:00</div>
+      <div class="dq-countdown-label">left today</div>
+    </div>
+    <div class="ob-icon"><svg><use href="#ic-target"></use></svg></div>
+    <div class="ob-eyebrow">SYSTEM NOTICE</div>
+    <h2>Daily Quest</h2>
+    <div class="dq-habit-list" id="dq-habit-list"></div>
+    <div class="dq-warning">
+      <div class="dq-warning-line1">Real life: Every second drains your lifespan.</div>
+      <div class="dq-warning-line2">Spend your time wisely, hunter.</div>
+    </div>
+    <div class="dq-actions">
+      <button class="btn btn-ghost" id="dq-decline">Decline</button>
+      <button class="btn btn-primary" id="dq-accept">Accept Quest</button>
+    </div>
+  </div>
+</div>
+
+<!-- Life Clock (full-screen, tap the Dashboard card to open) -->
+<div id="life-clock-overlay" class="fullscreen-notice life-clock-overlay">
+  <div class="life-clock-embers" id="life-clock-embers"></div>
+  <button class="life-clock-close" id="life-clock-close" aria-label="Close">&times;</button>
+  <div class="life-clock-content">
+    <div class="life-clock-glow"></div>
+    <div class="life-clock-days" id="life-clock-days">0</div>
+    <div class="life-clock-days-label">estimated days remaining</div>
+    <div class="life-clock-divider"></div>
+    <div class="life-clock-today-label">TODAY RESETS IN</div>
+    <div class="life-clock-countdown" id="life-clock-countdown">00:00:00</div>
+  </div>
+</div>
+
 <div id="app">
   <!-- Desktop sidebar -->
   <nav class="sidebar">
@@ -347,6 +384,16 @@
       </div>
 
       <div class="habit-list" id="dashboard-list"></div>
+
+      <div class="bracket-card life-clock-mini" id="life-clock-mini" style="display:none;">
+        <span class="bc-tr"></span><span class="bc-bl"></span>
+        <div class="life-clock-mini-label">
+          <svg><use href="#ic-flame"></use></svg>
+          <span>Life Clock</span>
+        </div>
+        <div class="life-clock-mini-days" id="life-clock-mini-days">&mdash;</div>
+        <div class="life-clock-mini-track"><div class="life-clock-mini-fill" id="life-clock-mini-fill"></div></div>
+      </div>
     </section>
 
     <!-- HISTORY -->
@@ -415,10 +462,12 @@
 
       <div class="bracket-card hunter-card">
         <span class="bc-tr"></span><span class="bc-bl"></span>
-        <div class="hunter-avatar" id="profile-avatar-wrap" title="Tap to change photo">
-          <img id="profile-avatar-img" style="display:none;" alt="">
-          <svg id="profile-avatar-icon"><use href="#ic-hunter"></use></svg>
-          <div class="avatar-edit-badge"><svg><use href="#ic-pencil"></use></svg></div>
+        <div class="hunter-avatar-col">
+          <div class="hunter-avatar" id="profile-avatar-wrap" title="Tap to change photo">
+            <img id="profile-avatar-img" style="display:none;" alt="">
+            <svg id="profile-avatar-icon"><use href="#ic-hunter"></use></svg>
+          </div>
+          <div class="avatar-tap-hint">Tap to change</div>
         </div>
         <input type="file" id="profile-avatar-file" accept="image/*" hidden>
         <div>
@@ -473,6 +522,35 @@
               <div class="setting-desc">Shown on your Dashboard and Profile</div>
             </div>
             <input type="text" id="settings-name-input" placeholder="Your name" maxlength="30" style="max-width:140px; text-align:right; background:var(--panel-raised); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; color:var(--text); font-family:inherit; font-size:0.88rem;">
+          </div>
+          <div class="setting-row" style="justify-content:flex-end; gap:10px;">
+            <div class="save-confirm" id="identity-save-confirm">Saved</div>
+            <button class="btn btn-primary btn-sm" id="btn-save-identity">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Life Clock</h3>
+        <div class="bracket-card" style="padding:0;">
+          <span class="bc-tr"></span><span class="bc-bl"></span>
+          <div class="setting-row">
+            <div style="flex:1;">
+              <div class="setting-name">Birthdate</div>
+              <div class="setting-desc">Used only to calculate your Life Clock</div>
+            </div>
+            <input type="date" id="settings-birthdate-input" style="background:var(--panel-raised); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; color:var(--text); font-family:inherit; font-size:0.85rem;">
+          </div>
+          <div class="setting-row">
+            <div style="flex:1;">
+              <div class="setting-name">Estimated lifespan</div>
+              <div class="setting-desc">In years &mdash; a rough personal estimate</div>
+            </div>
+            <input type="number" id="settings-lifespan-input" placeholder="80" min="1" max="130" style="max-width:80px; text-align:right; background:var(--panel-raised); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; color:var(--text); font-family:inherit; font-size:0.88rem;">
+          </div>
+          <div class="setting-row" style="justify-content:flex-end; gap:10px;">
+            <div class="save-confirm" id="lifeclock-save-confirm">Saved</div>
+            <button class="btn btn-primary btn-sm" id="btn-save-lifeclock">Save</button>
           </div>
         </div>
       </div>
@@ -661,6 +739,27 @@
       <button class="icon-btn" id="day-modal-close">✕</button>
     </div>
     <div class="habit-list" id="day-modal-list"></div>
+  </div>
+</div>
+
+<!-- Photo crop/zoom modal -->
+<div class="modal-overlay" id="crop-modal">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h2>Adjust Photo</h2>
+      <button class="icon-btn" id="crop-modal-close">✕</button>
+    </div>
+    <div class="crop-stage-wrap">
+      <canvas id="crop-canvas" class="crop-canvas" width="300" height="300"></canvas>
+    </div>
+    <div class="field">
+      <label for="crop-zoom">Zoom</label>
+      <input type="range" id="crop-zoom" min="100" max="300" value="100" class="crop-zoom-slider">
+    </div>
+    <div class="crop-hint">Drag the photo to reposition it</div>
+    <div class="modal-footer">
+      <button class="btn btn-primary btn-block" id="crop-confirm">Use Photo</button>
+    </div>
   </div>
 </div>
 

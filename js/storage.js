@@ -14,7 +14,10 @@ const KEYS = {
   onboarded: 'harsenal_onboarded',         // 'true' once the intro has been shown
   lastGreetingDate: 'harsenal_last_greeting_date', // 'YYYY-MM-DD' the daily greeting was last shown
   name: 'harsenal_name',                   // hunter's display name, optional
-  photo: 'harsenal_photo',                 // data URL, resized client-side, optional
+  photo: 'harsenal_photo',                 // data URL, resized/cropped client-side, optional
+  birthdate: 'harsenal_birthdate',         // ISO date 'YYYY-MM-DD', optional
+  lifespanYears: 'harsenal_lifespan_years', // estimated lifespan in years, optional
+  dailyQuestChoices: 'harsenal_daily_quest_choices', // { 'YYYY-MM-DD': 'accepted'|'declined' }
   penalties: 'harsenal_penalties',         // { 'YYYY-MM-DD': xpLost }
   penaltyProcessed: 'harsenal_penalty_processed' // [ 'YYYY-MM-DD', ... ] dates already checked
 };
@@ -210,6 +213,38 @@ const Store = {
     localStorage.removeItem(KEYS.photo);
   },
 
+  /* ---- Life Clock ---- */
+  getBirthdate() {
+    return localStorage.getItem(KEYS.birthdate) || null;
+  },
+  setBirthdate(dateISO) {
+    if (dateISO) localStorage.setItem(KEYS.birthdate, dateISO);
+    else localStorage.removeItem(KEYS.birthdate);
+  },
+  getLifespanYears() {
+    const v = localStorage.getItem(KEYS.lifespanYears);
+    return v ? Number(v) : null;
+  },
+  setLifespanYears(years) {
+    const n = Number(years);
+    if (years && !isNaN(n) && n > 0) localStorage.setItem(KEYS.lifespanYears, String(n));
+    else localStorage.removeItem(KEYS.lifespanYears);
+  },
+  hasLifeClockSetup() {
+    return !!(this.getBirthdate() && this.getLifespanYears());
+  },
+
+  /* ---- Daily Quest ---- */
+  getDailyQuestChoice(dateISO) {
+    const map = readJSON(KEYS.dailyQuestChoices, {});
+    return map[dateISO] || null;
+  },
+  setDailyQuestChoice(dateISO, choice) {
+    const map = readJSON(KEYS.dailyQuestChoices, {});
+    map[dateISO] = choice;
+    writeJSON(KEYS.dailyQuestChoices, map);
+  },
+
   /* ---- Streak freezes ---- */
   getFreezeCount() {
     return readJSON(KEYS.freezes, 0);
@@ -299,7 +334,9 @@ const Store = {
       equippedTitle: this.getEquippedTitle(),
       penalties: this.getPenalties(),
       name: this.getName(),
-      photo: this.getPhoto()
+      photo: this.getPhoto(),
+      birthdate: this.getBirthdate(),
+      lifespanYears: this.getLifespanYears()
     };
   },
 
@@ -318,13 +355,17 @@ const Store = {
     if (data.penalties) writeJSON(KEYS.penalties, data.penalties);
     if (typeof data.name === 'string') this.setName(data.name);
     if (typeof data.photo === 'string') this.setPhoto(data.photo);
+    if (typeof data.birthdate === 'string') this.setBirthdate(data.birthdate);
+    if (typeof data.lifespanYears === 'number') this.setLifespanYears(data.lifespanYears);
   },
 
   wipeAll() {
     Object.values(KEYS).forEach(k => {
       // Keep theme/sound/penalty settings, version marker, onboarding state,
-      // and hunter identity (name/photo) — a habit data reset shouldn't erase who you are.
-      if (k === KEYS.settings || k === KEYS.lastSeenVersion || k === KEYS.onboarded || k === KEYS.name || k === KEYS.photo) return;
+      // hunter identity (name/photo), and Life Clock setup — a habit data
+      // reset shouldn't erase who you are.
+      if (k === KEYS.settings || k === KEYS.lastSeenVersion || k === KEYS.onboarded
+          || k === KEYS.name || k === KEYS.photo || k === KEYS.birthdate || k === KEYS.lifespanYears) return;
       localStorage.removeItem(k);
     });
   }
