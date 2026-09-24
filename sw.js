@@ -1,5 +1,5 @@
 /*
-  Hunter's Arsenal — Service Worker
+  HunterArsenal — Service Worker
   ---------------------------------
   Strategy: cache-first for the app shell, versioned by APP_VERSION (see js/version.js).
   Bumping APP_VERSION and pushing to GitHub Pages is all that's needed to ship an
@@ -24,8 +24,7 @@ const PRECACHE_URLS = [
   'js/sound.js',
   'js/systemwindow.js',
   'js/app.js',
-  'assets/logo.svg',
-  'assets/logo-maskable.svg',
+  'assets/logo.png',
   'assets/fonts/oswald-latin-400-normal.woff2',
   'assets/fonts/oswald-latin-500-normal.woff2',
   'assets/fonts/oswald-latin-600-normal.woff2',

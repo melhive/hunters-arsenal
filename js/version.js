@@ -8,9 +8,16 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '2.4.0';
+self.APP_VERSION = '2.5.0';
 
 self.CHANGELOG = [
+  {
+    version: '2.5.0',
+    date: '2026-09-20',
+    changes: [
+      'Rebranded to HunterArsenal \u2014 new name and a new shield-and-blade logo throughout the app and all installed icons.'
+    ]
+  },
   {
     version: '2.4.0',
     date: '2026-09-19',

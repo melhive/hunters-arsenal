@@ -1,4 +1,4 @@
-/* Hunter's Arsenal — main application logic (vanilla JS, no build step). */
+/* HunterArsenal — main application logic (vanilla JS, no build step). */
 
 (function () {
   'use strict';

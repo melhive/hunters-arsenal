@@ -31,7 +31,7 @@ All of this is tuned in one place if you want to adjust the balance: rank thresh
 1. Create a new GitHub repo (e.g. `hunters-arsenal`) and push all these files to the root of the `main` branch (or `docs/` folder — your choice).
 2. In the repo, go to **Settings → Pages**, set the source to your branch/folder, save.
 3. Your app will be live at `https://<username>.github.io/<repo-name>/`.
-4. Open it in Chrome. You'll see an **Install** icon in the address bar (or menu → "Install Hunter's Arsenal") to add it as an installable app.
+4. Open it in Chrome. You'll see an **Install** icon in the address bar (or menu → "Install HunterArsenal") to add it as an installable app.
 
 ## How updates work
 This app is designed so that **shipping an update = bump a version number and push**:
