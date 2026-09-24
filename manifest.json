@@ -1,6 +1,6 @@
 {
-  "name": "Hunter's Arsenal",
-  "short_name": "H.Arsenal",
+  "name": "HunterArsenal",
+  "short_name": "HunterArsenal",
   "description": "Track your habits like a hunter tracks a target. Build streaks, level up, and master your routine.",
   "start_url": "./index.html",
   "scope": "./",

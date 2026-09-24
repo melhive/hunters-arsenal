@@ -1,4 +1,4 @@
-# Hunter's Arsenal
+# HunterArsenal
 
 A professional, offline-first habit tracker. Track daily/weekly habits, view your history, see statistics, and level up through ranks as you build streaks. Installable as an app from Chrome, works fully offline after first load, and updates the moment you push new code and refresh.
 
