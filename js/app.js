@@ -366,6 +366,7 @@
         });
       }
       handlePerfectDayCheck(dateISO);
+      refreshDailyQuestNotice();
     } else if (!nowDone) {
       if (typeof Sound !== 'undefined') Sound.uncheck();
       // Unchecking might undo a day that was previously marked perfect.
@@ -373,6 +374,7 @@
       if (perfectDays[dateISO] !== undefined && !Gamify.isPerfectDay(Store.getActiveHabits(), logs, dateISO)) {
         Store.clearPerfectDay(dateISO);
       }
+      refreshDailyQuestNotice();
     }
 
     checkAchievements();
@@ -384,14 +386,34 @@
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
     const alreadyRecorded = perfectDays[dateISO] !== undefined;
-    if (alreadyRecorded) return;
     if (!Gamify.isPerfectDay(habits, logs, dateISO)) return;
+    const questAccepted = Store.getDailyQuestChoice(dateISO) === 'accepted';
+    const cycle = Store.getDailyQuestCycle();
+    const thisCycle = cycle && cycle.date === dateISO && ['active', 'accepted-transition'].includes(cycle.status);
+    if (alreadyRecorded) {
+      if (questAccepted && thisCycle && !cycle.bonusAwarded) {
+        const total = perfectDays[dateISO] + QUEST_CLEAR_BONUS;
+        Store.setPerfectDay(dateISO, total);
+        cycle.bonusAwarded = true;
+        cycle.status = 'complete';
+        cycle.finishedAt = new Date().toISOString();
+        Store.setDailyQuestCycle(cycle);
+        SystemWindow.show({ type: 'quest-cleared', big: true, icon: 'ic-trophy', title: 'QUEST CLEARED!', lines: [`Daily Quest cleared. +${QUEST_CLEAR_BONUS} BONUS XP.`], duration: 5400 });
+        refreshDailyQuestNotice();
+      }
+      return;
+    }
 
     const frozenDates = Store.getFrozenDates();
     const streak = Gamify.perfectDayStreak(habits, logs, frozenDates, { ...perfectDays, [dateISO]: 1 }, Store.todayISO());
-    const questAccepted = Store.getDailyQuestChoice(dateISO) === 'accepted';
     const bonus = PERFECT_DAY_BASE_BONUS + Math.min(streak, 10) * 5 + (questAccepted ? QUEST_CLEAR_BONUS : 0);
     Store.setPerfectDay(dateISO, bonus);
+    if (questAccepted && thisCycle) {
+      cycle.bonusAwarded = true;
+      cycle.status = 'complete';
+      cycle.finishedAt = new Date().toISOString();
+      Store.setDailyQuestCycle(cycle);
+    }
 
     let freezeAwarded = false;
     if (streak > 0 && streak % 7 === 0) {
@@ -421,6 +443,7 @@
       });
       if (typeof Sound !== 'undefined') Sound.perfectDay();
     }
+    if (questAccepted && thisCycle) refreshDailyQuestNotice();
   }
 
   function checkAchievements() {
@@ -458,52 +481,283 @@
   }
 
   let dqCountdownStop = null;
+  let dqEntranceTimers = [];
+  let dqScheduleTimer = null;
+  let dqBootRecoveryReady = false;
 
-  function populateDailyQuestList(scheduled) {
+  function populateDailyQuestList(scheduled, active, dateISO, locked) {
     const list = $('#dq-habit-list');
     list.innerHTML = '';
     scheduled.forEach(h => {
-      const row = el('div', 'dq-habit-row');
-      row.innerHTML = `<div class="habit-icon" style="background:${hexAlpha(h.color, 0.16)}; color:${h.color}">${iconSVG(h.icon)}</div><span>${escapeHTML(h.name)}</span>`;
+      const done = Store.isDone(h.id, dateISO);
+      const row = el('div', 'dq-habit-row' + (done ? ' done' : ''));
+      const mark = active
+        ? `<button class="dq-task-check" aria-label="${locked ? 'Completed ' + escapeHTML(h.name) : done ? 'Mark ' + escapeHTML(h.name) + ' incomplete' : 'Complete ' + escapeHTML(h.name)}" aria-pressed="${done}"${locked ? ' disabled' : ''}>${done ? '✓' : ''}</button>`
+        : '<span class="dq-task-mark" aria-hidden="true"></span>';
+      row.innerHTML = `<div class="habit-icon" style="background:${hexAlpha(h.color, 0.16)}; color:${h.color}">${iconSVG(h.icon)}</div><span>${escapeHTML(h.name)}</span>${mark}`;
+      const toggle = row.querySelector('.dq-task-check');
+      if (toggle) toggle.addEventListener('click', () => {
+        if (dateISO !== Store.todayISO()) return;
+        performToggle(h.id, dateISO);
+        renderDashboard();
+        refreshDailyQuestNotice();
+      });
       list.appendChild(row);
     });
   }
 
-  function closeDailyQuestNotice() {
-    $('#daily-quest-notice').classList.remove('open');
-    if (dqCountdownStop) { dqCountdownStop(); dqCountdownStop = null; }
+  function stopDailyQuestEntrance() {
+    dqEntranceTimers.forEach(clearTimeout);
+    dqEntranceTimers = [];
   }
 
-  // Once per day: a full-screen Daily Quest notice listing today's habits.
-  // Shown until the hunter explicitly Accepts or Declines — no other way to
-  // dismiss it, by design. Accepting raises the stakes (bigger reward if
-  // cleared, bigger penalty if not); declining or ignoring it falls back to
-  // the normal, gentle penalty system unchanged.
-  function checkDailyQuestNotice() {
-    const today = Store.todayISO();
-    if (Store.getDailyQuestChoice(today) !== null) return; // already decided today
+  function playDailyQuestEntrance() {
+    const notice = $('#daily-quest-notice');
+    stopDailyQuestEntrance();
+    const classes = ['dq-title-phase', 'dq-frame-phase', 'dq-icon-phase', 'dq-content-phase', 'dq-tasks-phase', 'dq-outcomes-phase', 'dq-caution-phase', 'dq-actions-phase'];
+    classes.forEach(c => notice.classList.remove(c));
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      classes.forEach(c => notice.classList.add(c));
+      return;
+    }
+    const phases = [
+      ['dq-title-phase', 80], ['dq-frame-phase', 680], ['dq-icon-phase', 1080],
+      ['dq-content-phase', 1450], ['dq-tasks-phase', 1780], ['dq-outcomes-phase', 2070],
+      ['dq-caution-phase', 2320], ['dq-actions-phase', 2520]
+    ];
+    phases.forEach(([cls, delay]) => dqEntranceTimers.push(setTimeout(() => notice.classList.add(cls), delay)));
+  }
 
-    const habits = Store.getActiveHabits();
-    const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, today));
-    if (scheduled.length === 0) return; // nothing to quest about today
+  function closeDailyQuestNotice(exitState) {
+    const notice = $('#daily-quest-notice');
+    if (!notice) return;
+    notice.classList.add('closing');
+    if (exitState === 'decline') notice.classList.add('decline-exit');
+    notice.setAttribute('aria-hidden', 'true');
+    stopDailyQuestEntrance();
+    if (dqCountdownStop) { dqCountdownStop(); dqCountdownStop = null; }
+    window.setTimeout(() => {
+      notice.classList.remove('open', 'closing', 'active', 'complete', 'available', 'decline-exit');
+    }, 440);
+  }
 
-    populateDailyQuestList(scheduled);
-    $('#daily-quest-notice').classList.add('open');
+  function openDailyQuestNotice(cycle, entrance) {
+    const notice = $('#daily-quest-notice');
+    notice.classList.remove('closing');
+    notice.classList.add('open');
+    notice.setAttribute('aria-hidden', 'false');
+    $('#daily-quest-reopen').hidden = true;
+    notice.classList.toggle('active', cycle.status === 'active');
+    notice.classList.toggle('complete', cycle.status === 'complete');
+    notice.classList.toggle('available', cycle.status === 'available');
+    $('#dq-title').textContent = cycle.status === 'active' ? 'DAILY QUEST ACTIVE' : cycle.status === 'complete' ? 'QUEST COMPLETE' : cycle.status === 'accepted-transition' ? 'QUEST ACCEPTED' : 'DAILY QUEST AVAILABLE';
+    $('#dq-kicker').textContent = cycle.status === 'complete' ? 'QUEST COMPLETE' : cycle.status === 'active' ? 'DAILY QUEST ACTIVE' : cycle.status === 'accepted-transition' ? 'QUEST ACCEPTED' : 'DAILY QUEST AVAILABLE';
+    $('#dq-intro').innerHTML = cycle.status === 'active'
+      ? 'Complete the same habits shown on Home to clear the quest.'
+      : cycle.status === 'complete' ? 'All required scheduled habits are complete.'
+      : cycle.status === 'accepted-transition' ? 'The System is synchronizing your quest.'
+      : 'A new Daily Quest has been issued by the System.<br><strong>Accept the challenge?</strong>';
+    const habits = Store.getActiveHabits().filter(h => Gamify.isScheduledForDate(h, cycle.date));
+    populateDailyQuestList(habits, ['active', 'complete'].includes(cycle.status), cycle.date, cycle.status === 'complete');
+    const interactive = cycle.status === 'available';
+    $('.dq-actions').hidden = !interactive;
+    $('#dq-minimize').hidden = !['active', 'complete'].includes(cycle.status);
+    if (entrance) playDailyQuestEntrance();
+    else notice.classList.add('dq-content-phase', 'dq-tasks-phase', 'dq-outcomes-phase', 'dq-caution-phase', 'dq-actions-phase', 'dq-frame-phase', 'dq-icon-phase', 'dq-title-phase');
+    if (entrance && cycle.status === 'available' && !cycle.presented) {
+      const cycleId = cycle.id;
+      window.setTimeout(() => {
+        const current = Store.getDailyQuestCycle();
+        if (!current || current.id !== cycleId || current.status !== 'available') return;
+        current.presented = true;
+        Store.setDailyQuestCycle(current);
+      }, 2800);
+    }
+    if (dqCountdownStop) dqCountdownStop();
     dqCountdownStop = startMidnightCountdown('#dq-countdown');
+  }
+
+  function refreshDailyQuestNotice() {
+    const cycle = Store.getDailyQuestCycle();
+    if (!cycle || !['available', 'active', 'complete'].includes(cycle.status)) return;
+    if ($('#daily-quest-notice').classList.contains('open')) openDailyQuestNotice(cycle, false);
+    else $('#daily-quest-reopen').hidden = false;
+    updateDailyQuestSettings();
+  }
+
+  function getApplicableHabits(dateISO) {
+    return Store.getActiveHabits().filter(h => Gamify.isScheduledForDate(h, dateISO));
+  }
+
+  function localDateTime(dateISO, time) {
+    return new Date(`${dateISO}T${time}:00`);
+  }
+
+  function nextApplicableDate(time, afterDate) {
+    let date = afterDate || Store.todayISO();
+    for (let i = 0; i < 8; i++, date = addDays(date, 1)) {
+      if (getApplicableHabits(date).length) return date;
+    }
+    return null;
+  }
+
+  function scheduleNextDailyQuest(time) {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return false;
+    const existing = Store.getDailyQuestCycle();
+    if (existing && !['scheduled', 'complete', 'declined', 'failed'].includes(existing.status)) return false;
+    const now = new Date();
+    let date = Store.todayISO();
+    if (localDateTime(date, time) <= now || Store.getDailyQuestChoice(date) !== null) date = addDays(date, 1);
+    date = nextApplicableDate(time, date);
+    if (!date) return false;
+    Store.setDailyQuestCycle({
+      id: 'dq_' + Date.now().toString(36), date, time,
+      scheduledAt: localDateTime(date, time).toISOString(), status: 'scheduled', presented: false
+    });
+    updateDailyQuestSettings();
+    armDailyQuestSchedule();
+    return true;
+  }
+
+  function updateDailyQuestSettings() {
+    const cycle = Store.getDailyQuestCycle();
+    const timeInput = $('#settings-daily-quest-time');
+    if (!timeInput) return;
+    const preferredTime = Store.getSettings().dailyQuestTime || '20:00';
+    const time = cycle && cycle.status === 'scheduled' ? cycle.time : preferredTime;
+    timeInput.value = time;
+    const next = $('#dq-next-label');
+    const status = $('#dq-status-label');
+    const button = $('#btn-schedule-daily-quest');
+    if (!cycle || ['complete', 'declined', 'failed'].includes(cycle.status)) {
+      next.textContent = 'NOT SCHEDULED'; status.textContent = 'COMPLETED'; button.textContent = 'SET NEXT TIME';
+    } else {
+      const date = new Date(cycle.scheduledAt);
+      const dayLabel = cycle.date === Store.todayISO() ? 'TODAY' : date.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
+      const timeLabel = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      next.textContent = `${dayLabel} • ${timeLabel}`;
+      status.textContent = cycle.status === 'scheduled' ? 'READY' : cycle.status === 'available' ? 'AVAILABLE' : cycle.status === 'active' ? 'ACTIVE' : 'COMPLETED';
+      button.textContent = cycle.status === 'scheduled' ? 'CHANGE TIME' : 'NEXT QUEST TIME';
+    }
+  }
+
+  function showScheduledDailyQuest() {
+    const cycle = Store.getDailyQuestCycle();
+    if (!cycle || cycle.status !== 'scheduled') return;
+    const now = new Date();
+    if (now < new Date(cycle.scheduledAt)) return;
+    const today = Store.todayISO();
+    if (cycle.date < today) {
+      const date = nextApplicableDate(cycle.time, today);
+      if (!date) return;
+      cycle.date = date;
+      cycle.scheduledAt = localDateTime(date, cycle.time).toISOString();
+      Store.setDailyQuestCycle(cycle);
+      if (date !== today) return;
+    }
+    if (!getApplicableHabits(today).length) return;
+    cycle.status = 'available';
+    cycle.date = today;
+    cycle.presented = false;
+    Store.setDailyQuestCycle(cycle);
+    openDailyQuestNotice(cycle, true);
+    updateDailyQuestSettings();
+  }
+
+  function checkDailyQuestNotice(delayed) {
+    const run = () => {
+      dqBootRecoveryReady = true;
+      const savedCycle = Store.getDailyQuestCycle();
+      if (savedCycle && savedCycle.status === 'accepted-transition') {
+        savedCycle.status = 'active';
+        Store.setDailyQuestCycle(savedCycle);
+      }
+      showScheduledDailyQuest();
+      let cycle = Store.getDailyQuestCycle();
+      if (cycle && cycle.status === 'available' && !cycle.presented && !$('#daily-quest-notice').classList.contains('open')) {
+        openDailyQuestNotice(cycle, true);
+      } else if (cycle && cycle.status === 'available' && cycle.presented && !$('#daily-quest-notice').classList.contains('open')) {
+        $('#daily-quest-reopen').hidden = false;
+      } else if (cycle && ['active', 'complete'].includes(cycle.status) && !$('#daily-quest-notice').classList.contains('open')) {
+        $('#daily-quest-reopen').hidden = false;
+      }
+      updateDailyQuestSettings();
+    };
+    if (delayed) window.setTimeout(run, 2400);
+    else run();
+  }
+
+  function armDailyQuestSchedule() {
+    if (dqScheduleTimer) clearInterval(dqScheduleTimer);
+    dqScheduleTimer = window.setInterval(() => {
+      if (!dqBootRecoveryReady) return;
+      const cycle = Store.getDailyQuestCycle();
+      if (!cycle || cycle.status !== 'scheduled') { clearInterval(dqScheduleTimer); dqScheduleTimer = null; return; }
+      showScheduledDailyQuest();
+    }, 1000);
+  }
+
+  function finishDailyQuest(dateISO, status) {
+    const cycle = Store.getDailyQuestCycle();
+    if (!cycle || cycle.date !== dateISO || !['active', 'available'].includes(cycle.status)) return;
+    cycle.status = status;
+    cycle.finishedAt = new Date().toISOString();
+    Store.setDailyQuestCycle(cycle);
+    refreshDailyQuestNotice();
+    updateDailyQuestSettings();
   }
 
   function initDailyQuestNotice() {
     $('#dq-accept').addEventListener('click', () => {
-      Store.setDailyQuestChoice(Store.todayISO(), 'accepted');
-      closeDailyQuestNotice();
+      const cycle = Store.getDailyQuestCycle();
+      if (!cycle || cycle.status !== 'available') return;
+      Store.setDailyQuestChoice(cycle.date, 'accepted');
+      cycle.status = 'accepted-transition';
+      Store.setDailyQuestCycle(cycle);
+      const button = $('#dq-accept');
+      button.classList.add('activating');
+      button.disabled = true;
       if (typeof Sound !== 'undefined') Sound.click();
-      showToast('Daily Quest accepted. Good luck, hunter.');
+      $('#dq-title').textContent = 'QUEST ACCEPTED';
+      $('#dq-kicker').textContent = 'QUEST ACCEPTED';
+      $('#dq-intro').textContent = 'The System is synchronizing your quest.';
+      $('#daily-quest-notice').classList.add('accepted-pulse');
+      setTimeout(() => {
+        button.disabled = false;
+        button.classList.remove('activating');
+        $('#daily-quest-notice').classList.remove('accepted-pulse');
+        cycle.status = 'active';
+        Store.setDailyQuestCycle(cycle);
+        openDailyQuestNotice(cycle, false);
+        if (Gamify.isPerfectDay(Store.getActiveHabits(), Store.getLogs(), cycle.date)) {
+          handlePerfectDayCheck(cycle.date);
+        }
+        showToast('Daily Quest accepted. Good luck, hunter.');
+        updateDailyQuestSettings();
+      }, 850);
     });
     $('#dq-decline').addEventListener('click', () => {
-      Store.setDailyQuestChoice(Store.todayISO(), 'declined');
-      closeDailyQuestNotice();
+      const cycle = Store.getDailyQuestCycle();
+      if (!cycle || cycle.status !== 'available') return;
+      $('#dq-decline').classList.add('declining');
+      Store.setDailyQuestChoice(cycle.date, 'declined');
+      cycle.status = 'declined';
+      cycle.finishedAt = new Date().toISOString();
+      Store.setDailyQuestCycle(cycle);
+      setTimeout(() => closeDailyQuestNotice('decline'), 400);
       if (typeof Sound !== 'undefined') Sound.click();
+      updateDailyQuestSettings();
     });
+    $('#dq-minimize').addEventListener('click', () => {
+      closeDailyQuestNotice('minimize');
+      $('#daily-quest-reopen').hidden = false;
+    });
+    $('#daily-quest-reopen').addEventListener('click', () => {
+      const cycle = Store.getDailyQuestCycle();
+      if (cycle && ['available', 'active', 'complete'].includes(cycle.status)) openDailyQuestNotice(cycle, true);
+    });
+    updateDailyQuestSettings();
+    armDailyQuestSchedule();
   }
 
   // Offer a streak freeze if yesterday broke a perfect-day combo. Asked once per date.
@@ -543,10 +797,16 @@
   // spiral. Can be turned off entirely in Settings.
   function checkDailyPenalty() {
     const settings = Store.getSettings();
-    if (settings.penaltiesEnabled === false) return;
-
     const today = Store.todayISO();
     const yesterday = addDays(today, -1);
+    const cycle = Store.getDailyQuestCycle();
+    if (cycle && cycle.date === yesterday && cycle.status === 'active') {
+      const yesterdayHabits = getApplicableHabits(yesterday);
+      const yesterdayMissed = yesterdayHabits.filter(h => !Store.isDone(h.id, yesterday));
+      if (yesterdayHabits.length && yesterdayMissed.length) finishDailyQuest(yesterday, 'failed');
+    }
+    if (settings.penaltiesEnabled === false) return;
+
     if (Store.getPenaltyProcessed().includes(yesterday)) return;
     Store.markPenaltyProcessed(yesterday); // only ever evaluate a given date once
 
@@ -563,6 +823,7 @@
     const baseAmount = Math.min(missed.length * PENALTY_PER_MISS, PENALTY_CAP);
     const amount = questAccepted ? baseAmount * QUEST_FAIL_MULTIPLIER : baseAmount;
     Store.setPenalty(yesterday, amount);
+    if (questAccepted) finishDailyQuest(yesterday, 'failed');
 
     const name = hunterName();
     setTimeout(() => {
@@ -1538,6 +1799,26 @@
     $('#theme-btn-light').addEventListener('click', () => setTheme('light'));
 
     const settings = Store.getSettings();
+    const questTimeInput = $('#settings-daily-quest-time');
+    questTimeInput.value = Store.getDailyQuestCycle()?.time || settings.dailyQuestTime || '20:00';
+    $('#btn-schedule-daily-quest').addEventListener('click', () => {
+      const savedSettings = Store.getSettings();
+      savedSettings.dailyQuestTime = questTimeInput.value || '20:00';
+      Store.saveSettings(savedSettings);
+      const currentCycle = Store.getDailyQuestCycle();
+      const canSchedule = !currentCycle || ['scheduled', 'complete', 'declined', 'failed'].includes(currentCycle.status);
+      const scheduled = canSchedule && scheduleNextDailyQuest(savedSettings.dailyQuestTime);
+      if (!scheduled) {
+        if (!canSchedule) showToast('Quest time saved for your next cycle.');
+        else showToast('No applicable habits are scheduled for the next week.');
+      } else {
+        showSaveConfirm('#daily-quest-save-confirm');
+        if (typeof Sound !== 'undefined') Sound.click();
+      }
+      updateDailyQuestSettings();
+    });
+    updateDailyQuestSettings();
+
     $('#sound-btn-on').classList.toggle('active', settings.sound === true);
     $('#sound-btn-off').classList.toggle('active', settings.sound !== true);
     $('#sound-btn-on').addEventListener('click', () => {
@@ -1759,7 +2040,7 @@
 
     checkDailyPenalty();
     renderDashboard();
-    checkDailyQuestNotice();
+    checkDailyQuestNotice(true);
     checkForNewVersion();
     checkAchievements();
     setTimeout(checkFreezeOffer, 1300);

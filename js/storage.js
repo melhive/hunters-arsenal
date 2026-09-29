@@ -18,6 +18,7 @@ const KEYS = {
   birthdate: 'harsenal_birthdate',         // ISO date 'YYYY-MM-DD', optional
   lifespanYears: 'harsenal_lifespan_years', // estimated lifespan in years, optional
   dailyQuestChoices: 'harsenal_daily_quest_choices', // { 'YYYY-MM-DD': 'accepted'|'declined' }
+  dailyQuestCycle: 'harsenal_daily_quest_cycle', // current scheduled/active quest cycle
   penalties: 'harsenal_penalties',         // { 'YYYY-MM-DD': xpLost }
   penaltyProcessed: 'harsenal_penalty_processed' // [ 'YYYY-MM-DD', ... ] dates already checked
 };
@@ -243,6 +244,13 @@ const Store = {
     const map = readJSON(KEYS.dailyQuestChoices, {});
     map[dateISO] = choice;
     writeJSON(KEYS.dailyQuestChoices, map);
+  },
+  getDailyQuestCycle() {
+    return readJSON(KEYS.dailyQuestCycle, null);
+  },
+  setDailyQuestCycle(cycle) {
+    if (cycle) writeJSON(KEYS.dailyQuestCycle, cycle);
+    else localStorage.removeItem(KEYS.dailyQuestCycle);
   },
 
   /* ---- Streak freezes ---- */

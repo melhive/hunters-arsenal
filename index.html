@@ -267,28 +267,92 @@
   </div>
 </div>
 
-<!-- Daily Quest Notice (once per day) -->
-<div id="daily-quest-notice" class="fullscreen-notice">
-  <div class="dq-card">
-    <div class="dq-scanline"></div>
-    <div class="dq-countdown-wrap">
-      <div class="dq-countdown" id="dq-countdown">00:00:00</div>
-      <div class="dq-countdown-label">left today</div>
+<!-- Daily Quest System Notice -->
+<div id="daily-quest-notice" class="fullscreen-notice daily-quest-overlay" aria-hidden="true">
+  <div class="dq-energy dq-energy-a"></div>
+  <div class="dq-energy dq-energy-b"></div>
+  <div class="dq-grid"></div>
+  <div class="dq-vignette"></div>
+
+  <div class="dq-card" role="dialog" aria-modal="true" aria-labelledby="dq-title">
+    <div class="dq-frame dq-frame-outer" aria-hidden="true"></div>
+    <div class="dq-frame dq-frame-inner" aria-hidden="true"></div>
+    <div class="dq-corner dq-corner-tl" aria-hidden="true"></div>
+    <div class="dq-corner dq-corner-tr" aria-hidden="true"></div>
+    <div class="dq-corner dq-corner-bl" aria-hidden="true"></div>
+    <div class="dq-corner dq-corner-br" aria-hidden="true"></div>
+    <div class="dq-scanline" aria-hidden="true"></div>
+    <div class="dq-scanbeam" aria-hidden="true"></div>
+    <div class="dq-particles" aria-hidden="true"></div>
+
+    <div class="dq-topbar">
+      <div class="dq-system-label"><span class="dq-status-dot"></span>SYSTEM NOTICE</div>
+      <div class="dq-type-badge">QUEST <span>◇</span></div>
     </div>
-    <div class="ob-icon"><svg><use href="#ic-target"></use></svg></div>
-    <div class="ob-eyebrow">SYSTEM NOTICE</div>
-    <h2>Daily Quest</h2>
-    <div class="dq-habit-list" id="dq-habit-list"></div>
-    <div class="dq-warning">
-      <div class="dq-warning-line1">Real life: Every second drains your lifespan.</div>
-      <div class="dq-warning-line2">Spend your time wisely, hunter.</div>
+
+    <div class="dq-icon-stage" aria-hidden="true">
+      <div class="dq-icon-orbit dq-orbit-1"></div>
+      <div class="dq-icon-orbit dq-orbit-2"></div>
+      <div class="dq-icon-diamond"><span>!</span></div>
+      <div class="dq-icon-crosshair"></div>
     </div>
+
+    <div class="dq-heading">
+      <div class="dq-kicker" id="dq-kicker">DAILY QUEST AVAILABLE</div>
+      <h2 id="dq-title">DAILY QUEST AVAILABLE</h2>
+      <p id="dq-intro">A new Daily Quest has been issued by the System.<br><strong>Accept the challenge?</strong></p>
+    </div>
+
+    <div class="dq-quest-panel">
+      <div class="dq-quest-art" aria-hidden="true">
+        <div class="dq-moon"></div>
+        <div class="dq-mountain dq-mountain-a"></div>
+        <div class="dq-mountain dq-mountain-b"></div>
+        <div class="dq-city">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </div>
+
+      <div class="dq-quest-meta">
+        <span class="dq-quest-tag">DAILY QUEST</span>
+        <div class="dq-time-limit"><span>TIME LIMIT</span><strong id="dq-countdown">00:00:00</strong></div>
+      </div>
+
+      <h3>DISCIPLINE TRAINING</h3>
+      <p class="dq-quest-description">Complete today's scheduled habits to clear the quest.</p>
+
+      <div class="dq-section-title">TASKS</div>
+      <div class="dq-habit-list" id="dq-habit-list"></div>
+
+      <div class="dq-outcomes">
+        <div class="dq-outcome dq-reward">
+          <span class="dq-outcome-label">REWARD</span>
+          <strong>+25 BONUS XP</strong>
+          <small>when the Daily Quest is cleared</small>
+        </div>
+        <div class="dq-outcome dq-risk">
+          <span class="dq-outcome-label">RISK</span>
+          <strong>2× PENALTY IF FAILED</strong>
+          <small>accepted quest failures use the existing penalty rules</small>
+        </div>
+      </div>
+    </div>
+
     <div class="dq-actions">
-      <button class="btn btn-ghost" id="dq-decline">Decline</button>
-      <button class="btn btn-primary" id="dq-accept">Accept Quest</button>
+      <button class="dq-action dq-decline" id="dq-decline">
+        <span class="dq-action-icon">×</span>
+        <span><b>DECLINE</b><small>Normal penalty applies</small></span>
+      </button>
+      <button class="dq-action dq-accept" id="dq-accept">
+        <span class="dq-action-icon">✓</span>
+        <span><b>ACCEPT</b><small>Accept the quest risk</small></span>
+      </button>
     </div>
+    <div class="dq-caution"><strong>CAUTION</strong><span>Every second drains your lifespan.<br>Spend your time wisely.</span></div>
+    <button class="dq-minimize" id="dq-minimize" aria-label="Hide Daily Quest window">−</button>
   </div>
 </div>
+<button id="daily-quest-reopen" class="daily-quest-reopen" hidden>DAILY QUEST ACTIVE</button>
 
 <!-- Life Clock (full-screen, tap the Dashboard card to open) -->
 <div id="life-clock-overlay" class="fullscreen-notice life-clock-overlay">
@@ -578,6 +642,25 @@
               <button id="sound-btn-off">Off</button>
               <button id="sound-btn-on">On</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Daily Quest</h3>
+        <div class="bracket-card dq-schedule-card" style="padding:0;">
+          <span class="bc-tr"></span><span class="bc-bl"></span>
+          <div class="dq-schedule-status">
+            <div><span class="setting-name">Next Quest</span><strong id="dq-next-label">NOT SCHEDULED</strong></div>
+            <div><span class="setting-name">Status</span><strong id="dq-status-label">COMPLETED</strong></div>
+          </div>
+          <div class="setting-row">
+            <div style="flex:1"><div class="setting-name">DAILY QUEST TIME</div><div class="setting-desc">Choose when your next scheduled habits appear.</div></div>
+            <input type="time" id="settings-daily-quest-time" aria-label="Daily Quest time" style="background:var(--panel-raised); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; color:var(--text); font-family:inherit; font-size:0.88rem;">
+          </div>
+          <div class="setting-row" style="justify-content:flex-end; gap:10px;">
+            <div class="save-confirm" id="daily-quest-save-confirm">Saved</div>
+            <button class="btn btn-primary btn-sm" id="btn-schedule-daily-quest">SET NEXT TIME</button>
           </div>
         </div>
       </div>

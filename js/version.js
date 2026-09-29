@@ -8,9 +8,23 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '2.5.0';
+self.APP_VERSION = '2.6.0';
 
 self.CHANGELOG = [
+  {
+    version: '2.6.0',
+    date: '2026-09-29',
+    changes: [
+      'Daily Quest scheduling, missed-time recovery, reusable quest cycles, and an active System Notice synchronized with Home habit completion.'
+    ]
+  },
+  {
+    version: '2.5.1',
+    date: '2026-09-28',
+    changes: [
+      'Daily Quest System Notice visual overhaul — cinematic HUD entrance, glow, scanline, task presentation, reward/risk display, and exit animation. Existing Daily Quest mechanics are unchanged.'
+    ]
+  },
   {
     version: '2.5.0',
     date: '2026-09-20',
