@@ -269,11 +269,6 @@
 
 <!-- Daily Quest System Notice -->
 <div id="daily-quest-notice" class="fullscreen-notice daily-quest-overlay" aria-hidden="true">
-  <div class="dq-energy dq-energy-a"></div>
-  <div class="dq-energy dq-energy-b"></div>
-  <div class="dq-grid"></div>
-  <div class="dq-vignette"></div>
-
   <div class="dq-card" role="dialog" aria-modal="true" aria-labelledby="dq-title">
     <div class="dq-frame dq-frame-outer" aria-hidden="true"></div>
     <div class="dq-frame dq-frame-inner" aria-hidden="true"></div>
@@ -287,7 +282,10 @@
 
     <div class="dq-topbar">
       <div class="dq-system-label"><span class="dq-status-dot"></span>SYSTEM NOTICE</div>
-      <div class="dq-type-badge">QUEST <span>◇</span></div>
+      <div class="dq-header-right">
+        <div class="dq-type-badge">QUEST <span>◇</span></div>
+        <button class="dq-minimize" id="dq-minimize" aria-label="Hide Daily Quest window">×</button>
+      </div>
     </div>
 
     <div class="dq-icon-stage" aria-hidden="true">
@@ -341,8 +339,7 @@
         <span><b>ACCEPT</b><small>Accept the quest risk</small></span>
       </button>
     </div>
-    <div class="dq-caution"><strong>CAUTION</strong><span>Every second drains your lifespan. Spend your time wisely.</span></div>
-      <button class="dq-minimize" id="dq-minimize" aria-label="Hide Daily Quest window">×</button>
+    <div class="dq-caution"><strong>CAUTION</strong><span>Every second drains your lifespan.<br>Spend your time wisely.</span></div>
   </div>
 </div>
 <button id="daily-quest-reopen" class="daily-quest-reopen" hidden>DAILY QUEST ACTIVE</button>

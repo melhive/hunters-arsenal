@@ -15,7 +15,7 @@ self.CHANGELOG = [
     version: '2.6.1',
     date: '2026-09-29',
     changes: [
-      'Daily Quest System Notice now uses the locked holographic and cinematic backgrounds, a compact fixed layout, and habit-linked active checkboxes.'
+      'Daily Quest System Notice refined as a compact holographic System Window with habit-linked active task controls.'
     ]
   },
   {
