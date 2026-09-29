@@ -8,9 +8,16 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '2.6.0';
+self.APP_VERSION = '2.6.1';
 
 self.CHANGELOG = [
+  {
+    version: '2.6.1',
+    date: '2026-09-29',
+    changes: [
+      'Daily Quest System Notice now uses the locked holographic and cinematic backgrounds, a compact fixed layout, and habit-linked active checkboxes.'
+    ]
+  },
   {
     version: '2.6.0',
     date: '2026-09-29',

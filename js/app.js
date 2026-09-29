@@ -493,7 +493,7 @@
       const row = el('div', 'dq-habit-row' + (done ? ' done' : ''));
       const mark = active
         ? `<button class="dq-task-check" aria-label="${locked ? 'Completed ' + escapeHTML(h.name) : done ? 'Mark ' + escapeHTML(h.name) + ' incomplete' : 'Complete ' + escapeHTML(h.name)}" aria-pressed="${done}"${locked ? ' disabled' : ''}>${done ? '✓' : ''}</button>`
-        : '<span class="dq-task-mark" aria-hidden="true"></span>';
+        : '';
       row.innerHTML = `<div class="habit-icon" style="background:${hexAlpha(h.color, 0.16)}; color:${h.color}">${iconSVG(h.icon)}</div><span>${escapeHTML(h.name)}</span>${mark}`;
       const toggle = row.querySelector('.dq-task-check');
       if (toggle) toggle.addEventListener('click', () => {
@@ -543,7 +543,7 @@
 
   function openDailyQuestNotice(cycle, entrance) {
     const notice = $('#daily-quest-notice');
-    notice.classList.remove('closing');
+    notice.classList.remove('closing', 'decline-exit', 'accepted-pulse');
     notice.classList.add('open');
     notice.setAttribute('aria-hidden', 'false');
     $('#daily-quest-reopen').hidden = true;
@@ -561,7 +561,7 @@
     populateDailyQuestList(habits, ['active', 'complete'].includes(cycle.status), cycle.date, cycle.status === 'complete');
     const interactive = cycle.status === 'available';
     $('.dq-actions').hidden = !interactive;
-    $('#dq-minimize').hidden = !['active', 'complete'].includes(cycle.status);
+    $('#dq-minimize').hidden = !['available', 'active', 'complete'].includes(cycle.status);
     if (entrance) playDailyQuestEntrance();
     else notice.classList.add('dq-content-phase', 'dq-tasks-phase', 'dq-outcomes-phase', 'dq-caution-phase', 'dq-actions-phase', 'dq-frame-phase', 'dq-icon-phase', 'dq-title-phase');
     if (entrance && cycle.status === 'available' && !cycle.presented) {
@@ -581,7 +581,10 @@
     const cycle = Store.getDailyQuestCycle();
     if (!cycle || !['available', 'active', 'complete'].includes(cycle.status)) return;
     if ($('#daily-quest-notice').classList.contains('open')) openDailyQuestNotice(cycle, false);
-    else $('#daily-quest-reopen').hidden = false;
+    else {
+      $('#daily-quest-reopen').textContent = cycle.status === 'active' ? 'DAILY QUEST ACTIVE' : cycle.status === 'complete' ? 'QUEST COMPLETE' : 'DAILY QUEST AVAILABLE';
+      $('#daily-quest-reopen').hidden = false;
+    }
     updateDailyQuestSettings();
   }
 
@@ -677,8 +680,10 @@
       if (cycle && cycle.status === 'available' && !cycle.presented && !$('#daily-quest-notice').classList.contains('open')) {
         openDailyQuestNotice(cycle, true);
       } else if (cycle && cycle.status === 'available' && cycle.presented && !$('#daily-quest-notice').classList.contains('open')) {
+        $('#daily-quest-reopen').textContent = 'DAILY QUEST AVAILABLE';
         $('#daily-quest-reopen').hidden = false;
       } else if (cycle && ['active', 'complete'].includes(cycle.status) && !$('#daily-quest-notice').classList.contains('open')) {
+        $('#daily-quest-reopen').textContent = cycle.status === 'active' ? 'DAILY QUEST ACTIVE' : 'QUEST COMPLETE';
         $('#daily-quest-reopen').hidden = false;
       }
       updateDailyQuestSettings();
@@ -740,6 +745,7 @@
       const cycle = Store.getDailyQuestCycle();
       if (!cycle || cycle.status !== 'available') return;
       $('#dq-decline').classList.add('declining');
+      $('#daily-quest-notice').classList.add('decline-pulse');
       Store.setDailyQuestChoice(cycle.date, 'declined');
       cycle.status = 'declined';
       cycle.finishedAt = new Date().toISOString();
