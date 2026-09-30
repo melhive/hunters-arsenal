@@ -1376,3 +1376,111 @@ svg.icon, .sw-icon { width: 20px; height: 20px; display: block; flex-shrink: 0; 
   .daily-quest-overlay.open .dq-caution {font-size:.62rem;}
   .daily-quest-overlay.open .dq-minimize {top:auto;right:auto;}
 }
+
+/* Final Daily Quest fit and interaction polish. */
+.daily-quest-overlay {
+  box-sizing:border-box;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+}
+.daily-quest-overlay.open .dq-card {
+  box-sizing:border-box;
+  width:min(90vw,760px);
+  height:auto;
+  max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  grid-template-rows:auto 46px auto auto auto auto;
+  gap:5px;
+  padding:12px clamp(12px,2.4vw,22px) 11px;
+  overflow:hidden;
+}
+.daily-quest-overlay.open .dq-icon-stage {height:46px;}
+.daily-quest-overlay.open .dq-heading {margin:0 auto 2px;}
+.daily-quest-overlay.open .dq-heading p {margin-top:3px;}
+.daily-quest-overlay.open .dq-quest-panel {min-height:0;}
+.daily-quest-overlay.open .dq-habit-list {
+  flex:0 1 auto;
+  max-height:min(112px,18dvh);
+  overflow-y:auto;
+}
+.daily-quest-overlay.open .dq-outcomes {margin-top:3px;}
+.daily-quest-overlay.open .dq-caution {
+  min-width:0;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  margin:0;
+  padding:6px 8px 2px;
+  text-align:center;
+  font-size:.7rem;
+  line-height:1.35;
+}
+.daily-quest-overlay.open .dq-caution strong {font-size:.78rem;letter-spacing:.15em;}
+.daily-quest-overlay.open .dq-caution span {display:block;}
+.daily-quest-overlay.open .dq-actions {gap:8px;margin:0;}
+.daily-quest-overlay.open .dq-action {
+  min-height:46px;
+  background:linear-gradient(135deg,rgba(5,28,47,.96),rgba(2,12,24,.96));
+  transition:filter .18s ease,box-shadow .18s ease,transform .16s ease;
+}
+.daily-quest-overlay.open .dq-action::before {
+  inset:0;
+  background:linear-gradient(105deg,transparent 25%,rgba(132,229,255,.2) 47%,rgba(255,255,255,.08) 51%,transparent 72%);
+  transform:translateX(-125%);
+  animation:dq-button-sweep 7s ease-in-out infinite;
+}
+.daily-quest-overlay.open .dq-accept {
+  color:#b9efff;
+  border-color:rgba(67,202,255,.98);
+  background:linear-gradient(135deg,rgba(0,81,128,.52),rgba(2,18,34,.97) 72%);
+  box-shadow:inset 0 0 22px rgba(0,161,255,.22),0 0 18px rgba(0,157,255,.34),0 0 0 1px rgba(38,181,255,.22);
+  animation:dq-accept-breathe 4.2s ease-in-out infinite;
+}
+.daily-quest-overlay.open .dq-decline {
+  color:#ff8991;
+  border-color:rgba(255,81,96,.96);
+  background:linear-gradient(135deg,rgba(109,19,35,.42),rgba(25,8,18,.97) 72%);
+  box-shadow:inset 0 0 20px rgba(255,42,63,.18),0 0 17px rgba(255,43,59,.3),0 0 0 1px rgba(255,62,79,.18);
+  animation:dq-decline-breathe 4.6s ease-in-out infinite;
+}
+.daily-quest-overlay.open .dq-accept::before {animation-delay:1.2s;}
+.daily-quest-overlay.open .dq-decline::before {animation-delay:3.1s;}
+.daily-quest-overlay.open .dq-action-icon {text-shadow:0 0 12px currentColor;}
+.daily-quest-overlay.open .dq-action b {color:inherit;text-shadow:0 0 9px currentColor;}
+.daily-quest-overlay.open .dq-accept:hover,
+.daily-quest-overlay.open .dq-accept:focus-visible {filter:brightness(1.25);box-shadow:inset 0 0 28px rgba(0,161,255,.32),0 0 28px rgba(0,157,255,.5);}
+.daily-quest-overlay.open .dq-decline:hover,
+.daily-quest-overlay.open .dq-decline:focus-visible {filter:brightness(1.25);box-shadow:inset 0 0 26px rgba(255,42,63,.28),0 0 26px rgba(255,43,59,.46);}
+.daily-quest-overlay.open .dq-accept:active,
+.daily-quest-overlay.open .dq-decline:active {filter:brightness(1.55);}
+.daily-quest-overlay:not(.open) .dq-scanline,
+.daily-quest-overlay:not(.open) .dq-scanbeam,
+.daily-quest-overlay:not(.open) .dq-particles,
+.daily-quest-overlay:not(.open) .dq-frame-outer,
+.daily-quest-overlay:not(.open) .dq-icon-stage,
+.daily-quest-overlay:not(.open) .dq-inner-atmosphere {animation-play-state:paused;}
+.daily-quest-overlay.open .dq-quest-art::after {
+  background-image:repeating-linear-gradient(0deg,transparent 0 21px,rgba(81,176,228,.035) 22px,transparent 23px),radial-gradient(ellipse at 50% 28%,rgba(20,145,255,.12),transparent 56%),linear-gradient(112deg,transparent 38%,rgba(83,211,255,.045) 50%,transparent 62%);
+  background-size:auto,auto,220% 100%;
+  animation:dq-art-scan 16s ease-in-out infinite alternate;
+}
+.daily-quest-overlay.open .dq-inner-atmosphere::after {animation-delay:2.4s;}
+@keyframes dq-button-sweep {0%,18%{transform:translateX(-125%);opacity:0}27%{opacity:.7}48%,100%{transform:translateX(125%);opacity:0}}
+@keyframes dq-accept-breathe {0%,84%,100%{box-shadow:inset 0 0 22px rgba(0,161,255,.18),0 0 15px rgba(0,157,255,.25),0 0 0 1px rgba(38,181,255,.18)}90%{box-shadow:inset 0 0 27px rgba(0,161,255,.28),0 0 22px rgba(0,157,255,.42),0 0 0 1px rgba(38,181,255,.3)}}
+@keyframes dq-decline-breathe {0%,87%,100%{box-shadow:inset 0 0 18px rgba(255,42,63,.14),0 0 14px rgba(255,43,59,.22),0 0 0 1px rgba(255,62,79,.16)}93%{box-shadow:inset 0 0 24px rgba(255,42,63,.25),0 0 22px rgba(255,43,59,.4),0 0 0 1px rgba(255,62,79,.28)}}
+@keyframes dq-art-scan {to{background-position:0 0,0 0,100% 0}}
+@media (max-width:520px) {
+  .daily-quest-overlay.open .dq-card {width:90vw;height:auto;max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);padding:10px 10px 9px;grid-template-rows:auto 42px auto auto auto auto;gap:4px;}
+  .daily-quest-overlay.open .dq-icon-stage {height:42px;}
+  .daily-quest-overlay.open .dq-caution {font-size:.67rem;}
+  .daily-quest-overlay.open .dq-caution strong {font-size:.75rem;}
+}
+@media (max-height:680px) {
+  .daily-quest-overlay.open .dq-card {height:auto;grid-template-rows:auto 38px auto auto auto auto;padding-top:8px;padding-bottom:7px;}
+  .daily-quest-overlay.open .dq-icon-stage {height:38px;}
+  .daily-quest-overlay.open .dq-habit-list {max-height:14dvh;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .daily-quest-overlay.open .dq-action::before,
+  .daily-quest-overlay.open .dq-accept,.daily-quest-overlay.open .dq-decline,
+  .daily-quest-overlay.open .dq-quest-art::after {animation:none!important;}
+}
