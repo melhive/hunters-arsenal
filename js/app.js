@@ -254,7 +254,7 @@
   }
 
   /* ---------- Theme ---------- */
-  const COLOR_THEMES = ['system-blue', 'ocean', 'void', 'verdant'];
+  const COLOR_THEMES = ['system-blue', 'azure', 'ocean', 'void', 'verdant'];
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     const selector = $('#settings-color-theme');
@@ -2090,7 +2090,7 @@
         $('#loading-screen').classList.add('hidden');
         // Trigger the dashboard's entrance stagger only once it's actually visible.
         Effects.staggerChildren($('#dashboard-list'));
-      }, 400);
+      }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1700);
     });
   }
 

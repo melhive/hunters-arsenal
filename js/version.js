@@ -8,9 +8,23 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '2.6.2';
+self.APP_VERSION = '2.6.4';
 
 self.CHANGELOG = [
+  {
+    version: '2.6.4',
+    date: '2026-09-30',
+    changes: [
+      'Refined the Void palette and app entrance sequence.'
+    ]
+  },
+  {
+    version: '2.6.3',
+    date: '2026-09-30',
+    changes: [
+      'Added the Azure midnight cobalt color theme.'
+    ]
+  },
   {
     version: '2.6.2',
     date: '2026-09-30',
