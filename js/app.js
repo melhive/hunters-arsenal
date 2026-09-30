@@ -9,7 +9,7 @@
     'ic-pencil', 'ic-code', 'ic-lightbulb', 'ic-music', 'ic-palette', 'ic-heart',
     'ic-ban', 'ic-phone-off', 'ic-bike', 'ic-star', 'ic-smile', 'ic-flame', 'ic-shield', 'ic-trophy'
   ];
-  const COLORS = ['#00e5ff', '#e8a33d', '#5eb1e8', '#e8636c', '#c78ce8', '#e8d95e', '#5ee8c7', '#e88fc5'];
+  const COLORS = ['#28b8c7', '#d6a84f', '#5b9fd1', '#d95c67', '#9a72d8', '#e8d95e', '#58b982', '#e88fc5'];
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const MAX_FREEZES = 3;
@@ -259,7 +259,7 @@
     $('#theme-btn-dark').classList.toggle('active', theme === 'dark');
     $('#theme-btn-light').classList.toggle('active', theme === 'light');
     const meta = $('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#03070d' : '#f2f1ec');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#05080d' : '#f2f1ec');
   }
   function initTheme() {
     const saved = Store.getSettings().theme;
@@ -290,9 +290,10 @@
     if (typeof Sound !== 'undefined') Sound.click();
     state.view = view;
     document.body.dataset.haView = view;
+    updateDailyQuestEntry(Store.getDailyQuestCycle(), false);
     $all('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
     $all('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
-    if (view === 'dashboard') { state.animateDashboard = true; renderDashboard(); }
+    if (view === 'dashboard') { state.animateDashboard = true; renderDashboard(); checkDailyQuestNotice(false); }
     if (view === 'history') renderHistory();
     if (view === 'stats') renderStats();
     if (view === 'profile') { state.animateProfile = true; renderProfile(); }
@@ -399,7 +400,6 @@
         cycle.status = 'complete';
         cycle.finishedAt = new Date().toISOString();
         Store.setDailyQuestCycle(cycle);
-        SystemWindow.show({ type: 'quest-cleared', big: true, homeOnly: true, icon: 'ic-trophy', title: 'QUEST CLEARED!', lines: [`Daily Quest cleared. +${QUEST_CLEAR_BONUS} BONUS XP.`], duration: 5400 });
         refreshDailyQuestNotice();
       }
       return;
@@ -427,13 +427,6 @@
 
     const name = hunterName();
     if (questAccepted) {
-      const lines = [`Daily Quest cleared. +${bonus} bonus XP.`, `Combo streak: ${streak} day${streak === 1 ? '' : 's'}.`];
-      if (freezeAwarded) lines.push(`+1 Streak Freeze earned! (${Store.getFreezeCount()}/${MAX_FREEZES})`);
-      SystemWindow.show({
-        type: 'quest-cleared', big: true, homeOnly: true, icon: 'ic-trophy',
-        title: name ? `QUEST CLEARED, ${escapeHTML(name)}!` : 'QUEST CLEARED!',
-        lines, duration: 5400
-      });
       if (typeof Sound !== 'undefined') Sound.rankUp();
     } else {
       const lines = [`Every scheduled habit complete. +${bonus} bonus XP.`, `Combo streak: ${streak} day${streak === 1 ? '' : 's'}.`];
@@ -539,7 +532,23 @@
     if (dqCountdownStop) { dqCountdownStop(); dqCountdownStop = null; }
     window.setTimeout(() => {
       notice.classList.remove('open', 'closing', 'active', 'complete', 'available', 'decline-exit');
+      updateDailyQuestEntry(Store.getDailyQuestCycle(), true);
     }, 440);
+  }
+
+  function updateDailyQuestEntry(cycle, show) {
+    const entry = $('#daily-quest-reopen');
+    if (!entry) return;
+    const labels = { available: 'DAILY QUEST AVAILABLE', active: 'DAILY QUEST ACTIVE', complete: 'QUEST COMPLETE' };
+    const label = cycle && labels[cycle.status];
+    if (!label) {
+      entry.hidden = true;
+      entry.removeAttribute('data-state');
+      return;
+    }
+    entry.textContent = label;
+    entry.dataset.state = cycle.status;
+    entry.hidden = !show || state.view !== 'dashboard';
   }
 
   function openDailyQuestNotice(cycle, entrance) {
@@ -547,7 +556,7 @@
     notice.classList.remove('closing', 'decline-exit', 'accepted-pulse');
     notice.classList.add('open');
     notice.setAttribute('aria-hidden', 'false');
-    $('#daily-quest-reopen').hidden = true;
+    updateDailyQuestEntry(cycle, false);
     notice.classList.toggle('active', cycle.status === 'active');
     notice.classList.toggle('complete', cycle.status === 'complete');
     notice.classList.toggle('available', cycle.status === 'available');
@@ -580,12 +589,9 @@
 
   function refreshDailyQuestNotice() {
     const cycle = Store.getDailyQuestCycle();
+    updateDailyQuestEntry(cycle, !$('#daily-quest-notice').classList.contains('open'));
     if (!cycle || !['available', 'active', 'complete'].includes(cycle.status)) return;
     if ($('#daily-quest-notice').classList.contains('open')) openDailyQuestNotice(cycle, false);
-    else {
-      $('#daily-quest-reopen').textContent = cycle.status === 'active' ? 'DAILY QUEST ACTIVE' : cycle.status === 'complete' ? 'QUEST COMPLETE' : 'DAILY QUEST AVAILABLE';
-      $('#daily-quest-reopen').hidden = false;
-    }
     updateDailyQuestSettings();
   }
 
@@ -664,7 +670,8 @@
     cycle.date = today;
     cycle.presented = false;
     Store.setDailyQuestCycle(cycle);
-    openDailyQuestNotice(cycle, true);
+    if (state.view === 'dashboard') openDailyQuestNotice(cycle, true);
+    else updateDailyQuestEntry(cycle, true);
     updateDailyQuestSettings();
   }
 
@@ -679,13 +686,14 @@
       showScheduledDailyQuest();
       let cycle = Store.getDailyQuestCycle();
       if (cycle && cycle.status === 'available' && !cycle.presented && !$('#daily-quest-notice').classList.contains('open')) {
-        openDailyQuestNotice(cycle, true);
+        if (state.view === 'dashboard') openDailyQuestNotice(cycle, true);
+        else updateDailyQuestEntry(cycle, true);
       } else if (cycle && cycle.status === 'available' && cycle.presented && !$('#daily-quest-notice').classList.contains('open')) {
-        $('#daily-quest-reopen').textContent = 'DAILY QUEST AVAILABLE';
-        $('#daily-quest-reopen').hidden = false;
+        updateDailyQuestEntry(cycle, true);
       } else if (cycle && ['active', 'complete'].includes(cycle.status) && !$('#daily-quest-notice').classList.contains('open')) {
-        $('#daily-quest-reopen').textContent = cycle.status === 'active' ? 'DAILY QUEST ACTIVE' : 'QUEST COMPLETE';
-        $('#daily-quest-reopen').hidden = false;
+        updateDailyQuestEntry(cycle, true);
+      } else {
+        updateDailyQuestEntry(cycle, false);
       }
       updateDailyQuestSettings();
     };
@@ -757,7 +765,6 @@
     });
     $('#dq-minimize').addEventListener('click', () => {
       closeDailyQuestNotice('minimize');
-      $('#daily-quest-reopen').hidden = false;
     });
     $('#daily-quest-reopen').addEventListener('click', () => {
       const cycle = Store.getDailyQuestCycle();
