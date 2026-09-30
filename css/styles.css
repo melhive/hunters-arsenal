@@ -233,9 +233,20 @@ body {
 #command-grid::after {
   content:none;
 }
+.home-atmosphere-region {
+  position: relative;
+  display: flow-root;
+  isolation: isolate;
+}
+.home-visual-stage {
+  position: absolute;
+  inset: -28px -32px 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
 #home-hunter {
-  display: none;
-  position: fixed;
+  position: absolute;
   z-index: 0;
   top: 0;
   right: 0;
@@ -244,7 +255,6 @@ body {
   pointer-events: none;
   filter: brightness(1.08) contrast(1.04) saturate(1.06) hue-rotate(-7deg);
 }
-body:has(#view-dashboard.active) > #home-hunter { display: block; }
 @keyframes ha-command-grid-sweep {to{background-position:0 0,0 0,100% 0}}
 @keyframes ha-command-overlay-sweep {to{background-position:0 5px,0 17%,7% 0,100% 73%,100% 0}}
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; margin: 0; letter-spacing: 0.01em; }
@@ -270,13 +280,13 @@ button { font-family: inherit; }
 }
 #loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 #loading-screen .logo-mark {
-  width: 88px; height: 88px;
+  width: clamp(144px, 24vw, 200px); height: clamp(144px, 24vw, 200px);
   animation: pulse-glow 1.8s ease-in-out infinite;
 }
 #loading-screen .brand {
   margin-top: 20px;
   font-family: var(--font-display);
-  font-size: 1.4rem;
+  font-size: 2rem;
   letter-spacing: 0.04em;
   color: var(--text);
 }
@@ -310,9 +320,10 @@ button { font-family: inherit; }
 .sidebar .brand-row {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 8px 22px;
+  height: 58px;
 }
-.sidebar .brand-row img { width: 32px; height: 32px; }
-.sidebar .brand-row .brand-text { font-family: var(--font-display); font-size: 1.05rem; line-height: 1.1; }
+.sidebar .brand-row img { width: 48px; height: 48px; flex: 0 0 48px; }
+.sidebar .brand-row .brand-text { font-family: var(--font-display); font-size: 1.23rem; line-height: 1.1; }
 .sidebar .brand-row .brand-text b { color: var(--accent); }
 
 .nav-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -631,8 +642,8 @@ canvas.chart-canvas { width: 100%; display: block; }
     display: flex; align-items: center; justify-content: space-between; gap: 9px;
     padding: 4px 2px 18px;
   }
-  .mobile-topbar img { width: 26px; height: 26px; }
-  .mobile-topbar .brand-text { font-family: var(--font-display); font-size: 1rem; }
+  .mobile-topbar img { width: 40px; height: 40px; flex: 0 0 40px; }
+  .mobile-topbar .brand-text { font-family: var(--font-display); font-size: 1.2rem; }
   .mobile-topbar .brand-text b { color: var(--accent); }
   .mobile-topbar .daily-quest-reopen {align-self:center;flex:0 1 44%;max-width:44%;min-height:34px;padding:5px 7px;font-size:.54rem;line-height:1.15;text-align:center;white-space:normal;}
 }
@@ -1074,15 +1085,18 @@ button:focus-visible,.nav-item:focus-visible,.habit-item:focus-visible {
 }
 .time-remaining-value { font-size: 1.13rem; line-height: 1.1; font-weight: 700; letter-spacing: .055em; text-shadow: 0 0 8px rgba(var(--ha-teal-rgb), .5); }
 .time-remaining-label { font-size: .58rem; line-height: 1; letter-spacing: .14em; color: var(--ha-teal); text-shadow: 0 0 5px rgba(var(--ha-teal-rgb), .28); }
-#view-dashboard > .page-header { align-items: center; }
-#view-dashboard > .page-header > div:first-child { flex: 0 1 auto; }
+#view-dashboard .page-header { align-items: center; }
+#view-dashboard .page-header > div:first-child { flex: 0 1 auto; }
 @media (max-width: 520px) {
-  #view-dashboard > .page-header { gap: 8px; }
-  #view-dashboard > .page-header > div:first-child { min-width: 0; }
-  #view-dashboard > .page-header h1 { font-size: clamp(1.05rem, 5vw, 1.35rem); }
+  #view-dashboard .page-header { gap: 8px; }
+  #view-dashboard .page-header > div:first-child { min-width: 0; }
+  #view-dashboard .page-header h1 { font-size: clamp(1.05rem, 5vw, 1.35rem); }
   #view-dashboard .time-remaining { flex-basis: 130px; width: 130px; min-height: 44px; padding: 4px 6px; }
   #view-dashboard .time-remaining-value { font-size: .94rem; }
-  #view-dashboard .time-remaining-label { font-size: .52rem; }
+#view-dashboard .time-remaining-label { font-size: .52rem; }
+}
+@media (max-width: 860px) {
+  .home-visual-stage { inset: -20px -16px 0; }
 }
 .class-badge {
   font-family: var(--font-display); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em;

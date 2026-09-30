@@ -7,7 +7,7 @@
 <meta name="description" content="Track your habits, build streaks, and level up your routine.">
 <meta name="theme-color" content="#03050a">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -253,11 +253,10 @@
 </svg>
 
 <div id="command-grid" aria-hidden="true"></div>
-<img id="home-hunter" src="assets/characters/hunter-main.png" alt="" aria-hidden="true">
 
 <!-- Loading screen -->
 <div id="loading-screen">
-  <img src="assets/logo.png" alt="" class="logo-mark">
+  <img src="assets/branding/hunterarsenal-logo.png" alt="" class="logo-mark">
   <div class="brand">Hunter<span>Arsenal</span></div>
   <div class="tagline">LOADING YOUR GEAR&hellip;</div>
 </div>
@@ -391,7 +390,7 @@
   <!-- Desktop sidebar -->
   <nav class="sidebar">
     <div class="brand-row">
-      <img src="icons/icon-192.png" alt="">
+      <img src="assets/branding/hunterarsenal-logo.png" alt="">
       <div class="brand-text">Hunter<b>Arsenal</b></div>
     </div>
     <ul class="nav-list">
@@ -405,13 +404,16 @@
   </nav>
 
   <main class="main">
-    <div class="mobile-topbar">
-      <img src="icons/icon-192.png" alt="">
-      <div class="brand-text">Hunter<b>Arsenal</b></div>
-    </div>
-
     <!-- DASHBOARD -->
     <section class="view active" id="view-dashboard">
+      <div class="home-atmosphere-region">
+      <div class="mobile-topbar">
+        <img src="assets/branding/hunterarsenal-logo.png" alt="">
+        <div class="brand-text">Hunter<b>Arsenal</b></div>
+      </div>
+        <div class="home-visual-stage" aria-hidden="true">
+          <img id="home-hunter" src="assets/characters/hunter-main.png" alt="">
+        </div>
       <div class="dash-greeting" id="dash-greeting" style="display:none;">
         <div class="dash-greeting-avatar">
           <img id="dash-greeting-img" style="display:none;" alt="">
@@ -469,6 +471,7 @@
           <div class="quest-progress-title">Today's Quests</div>
           <div class="quest-progress-sub" id="quest-progress-sub">Nothing scheduled</div>
         </div>
+      </div>
       </div>
 
       <div class="habit-list" id="dashboard-list"></div>

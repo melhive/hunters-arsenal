@@ -25,6 +25,7 @@ const PRECACHE_URLS = [
   'js/systemwindow.js',
   'js/app.js',
   'assets/logo.png',
+  'assets/branding/hunterarsenal-logo.png',
   'assets/fonts/oswald-latin-400-normal.woff2',
   'assets/fonts/oswald-latin-500-normal.woff2',
   'assets/fonts/oswald-latin-600-normal.woff2',
