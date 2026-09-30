@@ -253,6 +253,7 @@
 </svg>
 
 <div id="command-grid" aria-hidden="true"></div>
+<img id="home-hunter" src="assets/characters/hunter-main.png" alt="" aria-hidden="true">
 
 <!-- Loading screen -->
 <div id="loading-screen">
@@ -423,7 +424,10 @@
           <h1>Daily Quest Log</h1>
           <div class="subtitle" id="dashboard-date"></div>
         </div>
-        <div class="time-remaining" id="time-remaining"></div>
+        <div class="time-remaining" id="time-remaining" aria-label="Time left today">
+          <span class="time-remaining-value" id="time-remaining-value">00:00:00</span>
+          <span class="time-remaining-label">TIME LEFT TODAY</span>
+        </div>
         <button id="daily-quest-reopen" class="daily-quest-reopen" style="visibility:hidden">DAILY QUEST AVAILABLE</button>
       </div>
 
@@ -450,6 +454,7 @@
 
       <div class="bracket-card quest-progress-card">
         <span class="bc-tr"></span><span class="bc-bl"></span>
+        <span class="quest-hunter-clip" aria-hidden="true"><img src="assets/characters/hunter-quest.png" alt=""></span>
         <div class="quest-ring-wrap">
           <svg class="quest-ring" viewBox="0 0 120 120">
             <circle class="quest-ring-track" cx="60" cy="60" r="52"></circle>

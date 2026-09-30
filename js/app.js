@@ -901,18 +901,6 @@
     else sub.textContent = `${total - done} quest${total - done === 1 ? '' : 's'} remaining`;
   }
 
-  function updateTimeRemaining() {
-    const el = $('#time-remaining');
-    if (!el) return;
-    const now = new Date();
-    const midnight = new Date(now);
-    midnight.setHours(24, 0, 0, 0);
-    const diffMs = midnight - now;
-    const hours = Math.floor(diffMs / 3600000);
-    const minutes = Math.floor((diffMs % 3600000) / 60000);
-    el.textContent = `${hours}h ${minutes}m left today`;
-  }
-
   function msUntilMidnight() {
     const now = new Date();
     const midnight = new Date(now);
@@ -1006,7 +994,6 @@
   function renderDashboard() {
     const today = Store.todayISO();
     $('#dashboard-date').textContent = formatDateLabel(today);
-    updateTimeRemaining();
 
     const name = hunterName();
     const greeting = $('#dash-greeting');
@@ -1080,9 +1067,10 @@
       const rank = Gamify.rankFor(Gamify.countCompletions(h.id, logs));
       const streak = Gamify.currentStreak(h, logs, today);
       const xpValue = Gamify.xpForCompletion(lvl.level);
-      const item = el('div', 'habit-item' + (done ? ' done' : ''));
+      const item = el('div', 'habit-item bracket-card' + (done ? ' done' : ''));
       item.dataset.habitId = h.id;
       item.innerHTML = `
+        <span class="bc-tr"></span><span class="bc-bl"></span>
         <button class="icon-btn drag-handle" title="Drag to reorder" aria-label="Drag to reorder">${iconSVG('ic-grip')}</button>
         <button class="habit-checkbox" aria-label="Mark done">${checkboxGlyph()}</button>
         <div class="habit-icon" style="background:${hexAlpha(h.color, 0.16)}; color:${h.color}">${iconSVG(h.icon)}</div>
@@ -2087,6 +2075,7 @@
     initProfileAvatar();
     initDailyQuestNotice();
     initLifeClock();
+    startMidnightCountdown('#time-remaining-value');
     initCropModal();
 
     checkDailyPenalty();

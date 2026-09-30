@@ -215,42 +215,36 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   background-image:
-    radial-gradient(ellipse at 12% 8%, rgba(var(--theme-electric-rgb),.12), transparent 42%),
-    radial-gradient(ellipse at 87% 78%, rgba(var(--theme-primary-rgb),.13), transparent 48%),
-    linear-gradient(145deg,var(--theme-bg-1),var(--theme-bg-0) 48%,var(--theme-bg-2));
-  background-attachment:fixed;
+    linear-gradient(rgba(2, 5, 13, .38), rgba(2, 5, 13, .38)),
+    url('../assets/background/system-environment.webp');
+  background-color: var(--theme-bg-0);
+  background-position: center top;
+  background-size: cover;
+  background-attachment: fixed;
 }
 #command-grid {
   position:fixed;inset:0;z-index:0;isolation:isolate;overflow:hidden;pointer-events:none;
-  background:
-    radial-gradient(ellipse at 15% 13%,rgba(var(--theme-highlight-rgb),.07),transparent 36%),
-    radial-gradient(ellipse at 84% 79%,rgba(var(--theme-primary-rgb),.065),transparent 40%),
-    linear-gradient(155deg,rgba(var(--theme-bg-2-rgb),.52),transparent 44%,rgba(var(--theme-bg-1-rgb),.65));
+  background: linear-gradient(rgba(2, 5, 13, .12), rgba(2, 5, 13, .18));
 }
 #command-grid::before,#command-grid::after {content:"";position:absolute;inset:0;pointer-events:none;}
 #command-grid::before {
-  inset:-4% -2% 0;opacity:.4;transform:perspective(1150px) rotateX(7deg) scale(1.04);transform-origin:50% 0;
-  background-image:
-    repeating-linear-gradient(0deg,transparent 0 57px,rgba(var(--theme-electric-rgb),.052) 58px,transparent 59px),
-    repeating-linear-gradient(90deg,transparent 0 77px,rgba(var(--theme-highlight-rgb),.038) 78px,transparent 79px),
-    linear-gradient(112deg,transparent 34%,rgba(var(--theme-electric-rgb),.03) 50%,transparent 66%);
-  background-size:auto,auto,240% 100%;background-position:0 0,0 0,-100% 0;
-  mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.9) 72%,transparent 100%);
-  animation:ha-command-grid-sweep 52s ease-in-out 4s infinite alternate;
+  content:none;
 }
 #command-grid::after {
-  opacity:.32;
-  background-image:
-    repeating-linear-gradient(0deg,rgba(184,205,220,.02) 0 1px,transparent 1px 5px),
-    linear-gradient(90deg,transparent 0 7%,rgba(var(--theme-highlight-rgb),.08) 7.08%,transparent 7.2%),
-    linear-gradient(180deg,transparent 0 18%,rgba(var(--theme-electric-rgb),.055) 18.12%,transparent 18.24%),
-    linear-gradient(90deg,transparent 0 93%,rgba(var(--theme-electric-rgb),.07) 93.08%,transparent 93.2%),
-    linear-gradient(112deg,transparent 38%,rgba(var(--theme-cyan-rgb),.04) 50%,transparent 62%);
-  background-size:auto,18vw 1px,1px 14vh,15vw 1px,240% 100%;
-  background-position:0 0,0 17%,7% 0,100% 73%,-100% 0;
-  background-repeat:repeat,no-repeat,no-repeat,no-repeat,no-repeat;
-  animation:ha-command-overlay-sweep 58s ease-in-out 3s infinite alternate;
+  content:none;
 }
+#home-hunter {
+  display: none;
+  position: fixed;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  width: min(66vw, 900px);
+  height: auto;
+  pointer-events: none;
+  filter: brightness(1.08) contrast(1.04) saturate(1.06) hue-rotate(-7deg);
+}
+body:has(#view-dashboard.active) > #home-hunter { display: block; }
 @keyframes ha-command-grid-sweep {to{background-position:0 0,0 0,100% 0}}
 @keyframes ha-command-overlay-sweep {to{background-position:0 5px,0 17%,7% 0,100% 73%,100% 0}}
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; margin: 0; letter-spacing: 0.01em; }
@@ -267,7 +261,11 @@ button { font-family: inherit; }
 #loading-screen {
   position: fixed; inset: 0; z-index: 1000;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--bg);
+  background-image: linear-gradient(rgba(2, 5, 13, .38), rgba(2, 5, 13, .38)), url('../assets/background/system-environment.webp');
+  background-color: var(--theme-bg-0);
+  background-position: center top;
+  background-size: cover;
+  background-attachment: fixed;
   transition: opacity 0.5s var(--ease), visibility 0.5s var(--ease);
 }
 #loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -1034,8 +1032,7 @@ button:focus-visible,.nav-item:focus-visible,.habit-item:focus-visible {
   100% { box-shadow: inset 0 0 0 1px rgba(var(--ha-teal-rgb),0); background-position: 220% 0; }
 }
 .habit-item.flash {
-  background-image: linear-gradient(100deg, transparent 40%, rgba(var(--ha-teal-rgb),0.16) 50%, transparent 60%);
-  background-size: 300% 100%;
+  background-image: none;
   animation: card-flash 0.6s ease-out;
 }
 
@@ -1068,8 +1065,24 @@ button:focus-visible,.nav-item:focus-visible,.habit-item:focus-visible {
 
 /* ===== Time remaining + Class badge ===== */
 .time-remaining {
-  font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-faint);
-  white-space: nowrap; align-self: flex-start; padding-top: 4px;
+  position: relative; display: flex; flex: 0 0 132px; width: 132px; min-height: 44px;
+  box-sizing: border-box; flex-direction: column; justify-content: center; align-items: center;
+  gap: 2px; margin-left: auto; padding: 4px 7px; white-space: nowrap;
+  color: var(--ha-teal-highlight); font-family: var(--font-mono); text-align: center;
+  background: rgba(3, 12, 18, .48); border: 1px solid rgba(var(--ha-teal-rgb), .58);
+  border-radius: 0; box-shadow: 0 0 7px rgba(var(--ha-teal-rgb), .2), inset 0 0 5px rgba(var(--ha-teal-rgb), .035);
+}
+.time-remaining-value { font-size: 1.13rem; line-height: 1.1; font-weight: 700; letter-spacing: .055em; text-shadow: 0 0 8px rgba(var(--ha-teal-rgb), .5); }
+.time-remaining-label { font-size: .58rem; line-height: 1; letter-spacing: .14em; color: var(--ha-teal); text-shadow: 0 0 5px rgba(var(--ha-teal-rgb), .28); }
+#view-dashboard > .page-header { align-items: center; }
+#view-dashboard > .page-header > div:first-child { flex: 0 1 auto; }
+@media (max-width: 520px) {
+  #view-dashboard > .page-header { gap: 8px; }
+  #view-dashboard > .page-header > div:first-child { min-width: 0; }
+  #view-dashboard > .page-header h1 { font-size: clamp(1.05rem, 5vw, 1.35rem); }
+  #view-dashboard .time-remaining { flex-basis: 130px; width: 130px; min-height: 44px; padding: 4px 6px; }
+  #view-dashboard .time-remaining-value { font-size: .94rem; }
+  #view-dashboard .time-remaining-label { font-size: .52rem; }
 }
 .class-badge {
   font-family: var(--font-display); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em;
@@ -1080,6 +1093,15 @@ button:focus-visible,.nav-item:focus-visible,.habit-item:focus-visible {
 /* ===== Quest Progress ring card ===== */
 .quest-progress-card {
   display: flex; align-items: center; gap: 18px; margin-bottom: 22px;
+}
+.quest-hunter-clip {
+  position: absolute; inset: 0; z-index: 0; overflow: hidden;
+  border-radius: inherit; pointer-events: none;
+}
+.quest-hunter-clip img {
+  position: absolute; top: -19%; right: -12px; width: auto; height: 138%; max-width: none;
+  opacity: .39; object-fit: contain; object-position: right center;
+  filter: brightness(1.04) saturate(1.06) hue-rotate(-5deg);
 }
 .quest-ring-wrap { position: relative; width: 92px; height: 92px; flex-shrink: 0; }
 .quest-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -1096,6 +1118,12 @@ button:focus-visible,.nav-item:focus-visible,.habit-item:focus-visible {
 .quest-ring-label { font-size: 0.6rem; color: var(--text-faint); letter-spacing: 0.06em; margin-top: 2px; }
 .quest-progress-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
 .quest-progress-sub { font-size: 0.82rem; color: var(--text-muted); }
+.quest-progress-info { position: relative; z-index: 1; }
+.quest-ring-wrap { z-index: 1; }
+@media (max-width: 600px) {
+  #home-hunter { width: min(84vw, 540px); right: -7vw; top: 4px; }
+  .quest-hunter-clip img { right: -8px; height: 132%; top: -16%; }
+}
 
 /* ===== Fullscreen notice base (Daily Quest, Life Clock) ===== */
 .fullscreen-notice {
@@ -1831,3 +1859,16 @@ body[data-ha-view="history"] #fab-add,
 body[data-ha-view="stats"] #fab-add,
 body[data-ha-view="profile"] #fab-add,
 body[data-ha-view="settings"] #fab-add { display: none; }
+
+/* Final System Blue backdrop with restrained solid Home card surfaces. */
+#view-dashboard .bracket-card {
+  background: #070D18;
+}
+#view-dashboard .habit-item,
+#view-dashboard .habit-item.done {
+  background: #070D18;
+}
+#view-dashboard .habit-item.flash {
+  background: #070D18;
+  background-image: none;
+}
