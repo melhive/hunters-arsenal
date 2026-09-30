@@ -1849,8 +1849,9 @@
       const canSchedule = !currentCycle || ['scheduled', 'complete', 'declined', 'failed'].includes(currentCycle.status) || declinedAvailable;
       const scheduled = canSchedule && scheduleNextDailyQuest(savedSettings.dailyQuestTime, savedSettings.dailyQuestDate);
       if (!scheduled) {
-        if (!canSchedule) showToast('Quest time saved for your next cycle.');
-        else if (savedSettings.dailyQuestDate < Store.todayISO()) showToast('Choose today or a future date.');
+        if (savedSettings.dailyQuestDate < Store.todayISO()) showToast('Choose today or a future date.');
+        else if (savedSettings.dailyQuestDate === Store.todayISO() && localDateTime(savedSettings.dailyQuestDate, savedSettings.dailyQuestTime) <= new Date()) showToast('That time has passed today. Choose a later time or another date.');
+        else if (!canSchedule) showToast('Quest time saved for your next cycle.');
         else if (!getApplicableHabits(savedSettings.dailyQuestDate).length) showToast('No habits are scheduled for that date.');
         else showToast('Choose a future time without an existing quest decision.');
       } else {
