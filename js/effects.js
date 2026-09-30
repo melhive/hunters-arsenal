@@ -16,7 +16,7 @@ const Effects = (function () {
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
 
-    const colors = ['#7cd45e', '#9ce882', '#e8a33d', '#ffd27a', '#5eb1e8'];
+    const colors = ['#00E5FF', '#5FF7FF', '#008FA3', '#4DB6FF', '#E8FCFF'];
     let particles = Array.from({ length: count }, () => ({
       x: originX,
       y: originY,

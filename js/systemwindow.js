@@ -10,29 +10,41 @@ const SystemWindow = (function () {
     return document.getElementById('system-window-root');
   }
 
+  function isHomeActive() {
+    const dashboard = document.getElementById('view-dashboard');
+    return !dashboard || dashboard.classList.contains('active');
+  }
+
   function iconSVG(id) {
     return `<svg class="sw-icon"><use href="#${id}"></use></svg>`;
   }
 
   function show(opts) {
+    if (opts.homeOnly && !isHomeActive()) return;
     queue.push(opts);
     if (!showing) advance();
   }
 
   function advance() {
-    if (queue.length === 0) { showing = false; return; }
-    showing = true;
-    render(queue.shift());
+    while (queue.length) {
+      const next = queue.shift();
+      if (next.homeOnly && !isHomeActive()) continue;
+      showing = true;
+      render(next);
+      return;
+    }
+    showing = false;
   }
 
   function render(opts) {
     const r = root();
     if (!r) { advance(); return; }
     r.innerHTML = '';
-    r.classList.toggle('sw-root-big', !!opts.big);
+    r.classList.toggle('sw-root-big', !!opts.big && opts.type !== 'quest-cleared');
+    r.classList.toggle('sw-root-quest', opts.type === 'quest-cleared');
 
     const box = document.createElement('div');
-    box.className = 'sw-box sw-type-' + (opts.type || 'default') + (opts.big ? ' sw-big' : '');
+    box.className = 'sw-box sw-type-' + (opts.type || 'default') + (opts.big && opts.type !== 'quest-cleared' ? ' sw-big' : '');
 
     const linesHTML = (opts.lines || []).map(l => `<div class="sw-line">${l}</div>`).join('');
     const hasActions = opts.actions && opts.actions.length > 0;
@@ -62,7 +74,7 @@ const SystemWindow = (function () {
       dismissed = true;
       box.classList.remove('sw-show');
       box.classList.add('sw-hide');
-      setTimeout(() => { box.remove(); r.classList.remove('sw-root-big'); advance(); }, 260);
+      setTimeout(() => { box.remove(); r.classList.remove('sw-root-big', 'sw-root-quest'); advance(); }, 260);
     }
 
     box.querySelector('.sw-close').addEventListener('click', dismiss);
@@ -90,8 +102,6 @@ const SystemWindow = (function () {
       box.classList.add('sw-show');
       if (opts.type === 'levelup' || opts.type === 'rankup') {
         if (typeof Effects !== 'undefined') Effects.celebrateTop();
-      } else if (opts.type === 'quest-cleared') {
-        if (typeof Effects !== 'undefined') Effects.burstConfetti(window.innerWidth / 2, window.innerHeight * 0.35, 50);
       }
     }));
   }

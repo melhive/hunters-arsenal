@@ -18,12 +18,12 @@ const RANKS = [
 // see js/version.js changelog for the tuning pass. Multiplier stays modest
 // (1.0x-2.2x) so it accelerates progress without ever runaway/snowballing.
 const HUNTER_RANKS = [
-  { id: 'E', label: 'E-Rank', minLevel: 1, multiplier: 1.0, color: '#8b959c' },
-  { id: 'D', label: 'D-Rank', minLevel: 3, multiplier: 1.2, color: '#5eb1e8' },
-  { id: 'C', label: 'C-Rank', minLevel: 6, multiplier: 1.4, color: '#7cd45e' },
-  { id: 'B', label: 'B-Rank', minLevel: 9, multiplier: 1.6, color: '#c78ce8' },
-  { id: 'A', label: 'A-Rank', minLevel: 13, multiplier: 1.8, color: '#e8a33d' },
-  { id: 'S', label: 'S-Rank', minLevel: 17, multiplier: 2.2, color: '#e8636c' }
+  { id: 'E', label: 'E-Rank', minLevel: 1, multiplier: 1.0, color: '#8A9BA5' },
+  { id: 'D', label: 'D-Rank', minLevel: 3, multiplier: 1.2, color: '#4DB6FF' },
+  { id: 'C', label: 'C-Rank', minLevel: 6, multiplier: 1.4, color: '#00E5FF' },
+  { id: 'B', label: 'B-Rank', minLevel: 9, multiplier: 1.6, color: '#5C7CFA' },
+  { id: 'A', label: 'A-Rank', minLevel: 13, multiplier: 1.8, color: '#B66DFF' },
+  { id: 'S', label: 'S-Rank', minLevel: 17, multiplier: 2.2, color: '#FFD166' }
 ];
 const BASE_XP = 10;
 

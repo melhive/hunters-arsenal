@@ -9,7 +9,7 @@
     'ic-pencil', 'ic-code', 'ic-lightbulb', 'ic-music', 'ic-palette', 'ic-heart',
     'ic-ban', 'ic-phone-off', 'ic-bike', 'ic-star', 'ic-smile', 'ic-flame', 'ic-shield', 'ic-trophy'
   ];
-  const COLORS = ['#7cd45e', '#e8a33d', '#5eb1e8', '#e8636c', '#c78ce8', '#e8d95e', '#5ee8c7', '#e88fc5'];
+  const COLORS = ['#00e5ff', '#e8a33d', '#5eb1e8', '#e8636c', '#c78ce8', '#e8d95e', '#5ee8c7', '#e88fc5'];
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const MAX_FREEZES = 3;
@@ -259,11 +259,11 @@
     $('#theme-btn-dark').classList.toggle('active', theme === 'dark');
     $('#theme-btn-light').classList.toggle('active', theme === 'light');
     const meta = $('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#12151a' : '#f2f1ec');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#03070d' : '#f2f1ec');
   }
   function initTheme() {
     const saved = Store.getSettings().theme;
-    const theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    const theme = saved || 'dark';
     applyTheme(theme);
   }
   function setTheme(theme) {
@@ -289,6 +289,7 @@
   function switchView(view) {
     if (typeof Sound !== 'undefined') Sound.click();
     state.view = view;
+    document.body.dataset.haView = view;
     $all('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
     $all('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
     if (view === 'dashboard') { state.animateDashboard = true; renderDashboard(); }
@@ -398,7 +399,7 @@
         cycle.status = 'complete';
         cycle.finishedAt = new Date().toISOString();
         Store.setDailyQuestCycle(cycle);
-        SystemWindow.show({ type: 'quest-cleared', big: true, icon: 'ic-trophy', title: 'QUEST CLEARED!', lines: [`Daily Quest cleared. +${QUEST_CLEAR_BONUS} BONUS XP.`], duration: 5400 });
+        SystemWindow.show({ type: 'quest-cleared', big: true, homeOnly: true, icon: 'ic-trophy', title: 'QUEST CLEARED!', lines: [`Daily Quest cleared. +${QUEST_CLEAR_BONUS} BONUS XP.`], duration: 5400 });
         refreshDailyQuestNotice();
       }
       return;
@@ -429,7 +430,7 @@
       const lines = [`Daily Quest cleared. +${bonus} bonus XP.`, `Combo streak: ${streak} day${streak === 1 ? '' : 's'}.`];
       if (freezeAwarded) lines.push(`+1 Streak Freeze earned! (${Store.getFreezeCount()}/${MAX_FREEZES})`);
       SystemWindow.show({
-        type: 'quest-cleared', big: true, icon: 'ic-trophy',
+        type: 'quest-cleared', big: true, homeOnly: true, icon: 'ic-trophy',
         title: name ? `QUEST CLEARED, ${escapeHTML(name)}!` : 'QUEST CLEARED!',
         lines, duration: 5400
       });

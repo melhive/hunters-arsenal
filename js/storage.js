@@ -26,7 +26,7 @@ const KEYS = {
 const DEFAULT_HABITS = [
   { id: 'h_water', name: 'Drink water', icon: 'ic-droplet', color: '#5eb1e8', stat: 'VIT', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
   { id: 'h_read', name: 'Read 20 minutes', icon: 'ic-book', color: '#e8a33d', stat: 'INT', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
-  { id: 'h_train', name: 'Train', icon: 'ic-dumbbell', color: '#7cd45e', stat: 'STR', archived: false, frequency: { type: 'weekdays', days: [1, 2, 3, 4, 5] }, createdAt: todayISO() }
+  { id: 'h_train', name: 'Train', icon: 'ic-dumbbell', color: '#00e5ff', stat: 'STR', archived: false, frequency: { type: 'weekdays', days: [1, 2, 3, 4, 5] }, createdAt: todayISO() }
 ];
 
 function todayISO(d = new Date()) {
