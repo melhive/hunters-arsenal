@@ -254,21 +254,17 @@
   }
 
   /* ---------- Theme ---------- */
-  const COLOR_THEMES = {
-    ocean: '#28b8c7',
-    void: '#9a72d8',
-    verdant: '#58b982'
-  };
+  const COLOR_THEMES = ['system-blue', 'ocean', 'void', 'verdant'];
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     const selector = $('#settings-color-theme');
     if (selector) selector.value = theme;
     const meta = $('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', '#05080d');
+    if (meta) meta.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--theme-bg-0').trim());
   }
   function initTheme() {
     const saved = Store.getSettings().theme;
-    const theme = Object.hasOwn(COLOR_THEMES, saved) ? saved : 'ocean';
+    const theme = saved === 'hunter' || !COLOR_THEMES.includes(saved) ? 'system-blue' : saved;
     if (saved !== theme) {
       const settings = Store.getSettings();
       settings.theme = theme;
@@ -277,7 +273,7 @@
     applyTheme(theme);
   }
   function setTheme(theme) {
-    if (!Object.hasOwn(COLOR_THEMES, theme)) return;
+    if (!COLOR_THEMES.includes(theme)) return;
     const settings = Store.getSettings();
     settings.theme = theme;
     Store.saveSettings(settings);
@@ -555,12 +551,14 @@
     const label = status && labels[status];
     if (!label) {
       entry.hidden = true;
+      entry.style.visibility = 'hidden';
       entry.removeAttribute('data-state');
       return;
     }
     entry.textContent = label;
     entry.dataset.state = status;
     entry.hidden = !show || state.view !== 'dashboard';
+    entry.style.visibility = entry.hidden ? 'hidden' : 'visible';
   }
 
   function openDailyQuestNotice(cycle, entrance) {
@@ -742,6 +740,16 @@
   }
 
   function initDailyQuestNotice() {
+    const questEntry = $('#daily-quest-reopen');
+    const placeQuestEntry = () => {
+      const host = window.matchMedia('(max-width: 860px)').matches
+        ? $('.mobile-topbar')
+        : $('#view-dashboard .page-header');
+      if (host && questEntry.parentElement !== host) host.appendChild(questEntry);
+    };
+    placeQuestEntry();
+    updateDailyQuestEntry(Store.getDailyQuestCycle(), true);
+    window.addEventListener('resize', placeQuestEntry, { passive: true });
     $('#dq-accept').addEventListener('click', () => {
       const cycle = Store.getDailyQuestCycle();
       if (!cycle || !['available', 'declined'].includes(cycle.status)) return;

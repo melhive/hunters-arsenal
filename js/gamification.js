@@ -53,11 +53,11 @@ function xpValueOf(entry) {
 
 // The five hunter stats. Every habit feeds exactly one.
 const STATS = [
-  { id: 'STR', label: 'Strength', icon: 'ic-dumbbell' },
-  { id: 'VIT', label: 'Vitality', icon: 'ic-droplet' },
-  { id: 'INT', label: 'Intellect', icon: 'ic-book' },
-  { id: 'PER', label: 'Perception', icon: 'ic-target' },
-  { id: 'CHA', label: 'Charisma', icon: 'ic-star' }
+  { id: 'STR', label: 'Strength', icon: 'ic-stat-str' },
+  { id: 'VIT', label: 'Vitality', icon: 'ic-stat-vit' },
+  { id: 'INT', label: 'Intellect', icon: 'ic-stat-int' },
+  { id: 'PER', label: 'Perception', icon: 'ic-stat-per' },
+  { id: 'CHA', label: 'Charisma', icon: 'ic-stat-cha' }
 ];
 const DEFAULT_STAT = 'STR';
 

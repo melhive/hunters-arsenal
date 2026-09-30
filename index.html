@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HunterArsenal — Habit Tracker</title>
 <meta name="description" content="Track your habits, build streaks, and level up your routine.">
-<meta name="theme-color" content="#03070d">
+<meta name="theme-color" content="#03050a">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -220,9 +220,39 @@
   <circle cx="15" cy="18" r="1.6" fill="currentColor"/>
 </symbol>
 
+<symbol id="ic-stat-str" viewBox="0 0 24 24">
+  <path d="M4 19.5h5.1c0-2.5 1-4.1 3.1-4.5 1.3-.2 2.6.4 3.8.2 1.4-.2 2.4-1.2 2.4-2.4l-.1-1.7 1.1-1.5-1.5-2-2 .6-.8 1.8-1.7-.3.6-2.1-1.7-1.7-2.1 1.3-1.4 3-1.4 1.1-1 2.5H4v5.7Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M10.1 11.4c1.3-.7 2.7-.7 3.8.1M8.4 15.8l1.1.8" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="ic-stat-vit" viewBox="0 0 24 24">
+  <path d="M12 2.8 20 5.9v5.4c0 4.6-3 8.1-8 10.1-5-2-8-5.5-8-10.1V5.9l8-3.1Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M12 8v8M8 12h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="ic-stat-int" viewBox="0 0 24 24">
+  <path d="M12 6.1c-2.4-1.8-5.5-2-8.3-.8v13.3c2.8-1.2 5.9-1 8.3.8 2.4-1.8 5.5-2 8.3-.8V5.3c-2.8-1.2-5.9-1-8.3.8Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>
+  <path d="M12 6.2v13M6.6 8.3c1.3-.3 2.5-.1 3.6.5M6.6 11.2c1.3-.3 2.5-.1 3.6.5M17.4 8.3c-1.3-.3-2.5-.1-3.6.5M17.4 11.2c-1.3-.3-2.5-.1-3.6.5" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="ic-stat-per" viewBox="0 0 24 24">
+  <path d="M2.8 12s3.2-6.1 9.2-6.1 9.2 6.1 9.2 6.1-3.2 6.1-9.2 6.1S2.8 12 2.8 12Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>
+  <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.45"/>
+  <circle cx="12" cy="12" r="1.25" fill="currentColor"/>
+  <path d="M12 2.8v1.4M12 19.8v1.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="ic-stat-cha" viewBox="0 0 24 24">
+  <circle cx="12" cy="7.4" r="2.7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <circle cx="5.2" cy="9.2" r="2.1" fill="none" stroke="currentColor" stroke-width="1.35"/>
+  <circle cx="18.8" cy="9.2" r="2.1" fill="none" stroke="currentColor" stroke-width="1.35"/>
+  <path d="M6.8 20c.2-3.7 2-5.7 5.2-5.7s5 2 5.2 5.7H6.8ZM1.9 18.7c.2-3 1.4-4.5 3.7-4.5 1 0 1.8.3 2.4.9M22.1 18.7c-.2-3-1.4-4.5-3.7-4.5-1 0-1.8.3-2.4.9" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+
 </defs>
 </svg>
 
+<div id="command-grid" aria-hidden="true"></div>
 
 <!-- Loading screen -->
 <div id="loading-screen">
@@ -394,7 +424,7 @@
           <div class="subtitle" id="dashboard-date"></div>
         </div>
         <div class="time-remaining" id="time-remaining"></div>
-        <button id="daily-quest-reopen" class="daily-quest-reopen" hidden>DAILY QUEST AVAILABLE</button>
+        <button id="daily-quest-reopen" class="daily-quest-reopen" style="visibility:hidden">DAILY QUEST AVAILABLE</button>
       </div>
 
       <div class="bracket-card xp-hero">
@@ -615,9 +645,10 @@
           <div class="setting-row">
             <div>
               <label class="setting-name" for="settings-color-theme">Color Theme</label>
-              <div class="setting-desc">Choose your HunterArsenal system accent.</div>
+              <div class="setting-desc">Choose a HunterArsenal color palette.</div>
             </div>
             <select id="settings-color-theme" class="theme-select" aria-label="Color theme">
+              <option value="system-blue">System Blue</option>
               <option value="ocean">Ocean</option>
               <option value="void">Void</option>
               <option value="verdant">Verdant</option>
