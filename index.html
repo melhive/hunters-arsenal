@@ -342,8 +342,6 @@
     <div class="dq-caution"><strong>CAUTION</strong><span>Every second drains your lifespan.<br>Spend your time wisely.</span></div>
   </div>
 </div>
-<button id="daily-quest-reopen" class="daily-quest-reopen" hidden>DAILY QUEST ACTIVE</button>
-
 <!-- Life Clock (full-screen, tap the Dashboard card to open) -->
 <div id="life-clock-overlay" class="fullscreen-notice life-clock-overlay">
   <div class="life-clock-embers" id="life-clock-embers"></div>
@@ -395,7 +393,10 @@
           <h1>Daily Quest Log</h1>
           <div class="subtitle" id="dashboard-date"></div>
         </div>
-        <div class="time-remaining" id="time-remaining"></div>
+        <div class="page-header-actions">
+          <div class="time-remaining" id="time-remaining"></div>
+          <button id="daily-quest-reopen" class="daily-quest-reopen" hidden>DAILY QUEST AVAILABLE</button>
+        </div>
       </div>
 
       <div class="bracket-card xp-hero">
@@ -615,13 +616,14 @@
           <span class="bc-tr"></span><span class="bc-bl"></span>
           <div class="setting-row">
             <div>
-              <div class="setting-name">Theme</div>
-              <div class="setting-desc">Switch between dark and light mode</div>
+              <label class="setting-name" for="settings-color-theme">Color Theme</label>
+              <div class="setting-desc">Choose your HunterArsenal system accent.</div>
             </div>
-            <div class="theme-toggle">
-              <button data-theme-choice="dark" id="theme-btn-dark">Dark</button>
-              <button data-theme-choice="light" id="theme-btn-light">Light</button>
-            </div>
+            <select id="settings-color-theme" class="theme-select" aria-label="Color theme">
+              <option value="ocean">Ocean</option>
+              <option value="void">Void</option>
+              <option value="verdant">Verdant</option>
+            </select>
           </div>
           <div class="setting-row">
             <div>
@@ -645,8 +647,11 @@
             <div><span class="setting-name">Status</span><strong id="dq-status-label">COMPLETED</strong></div>
           </div>
           <div class="setting-row">
-            <div style="flex:1"><div class="setting-name">DAILY QUEST TIME</div><div class="setting-desc">Choose when your next scheduled habits appear.</div></div>
-            <input type="time" id="settings-daily-quest-time" aria-label="Daily Quest time" style="background:var(--panel-raised); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; color:var(--text); font-family:inherit; font-size:0.88rem;">
+            <div style="flex:1"><div class="setting-name">NEXT QUEST DATE &amp; TIME</div><div class="setting-desc">Choose a future day and the time it should appear.</div></div>
+            <div class="dq-schedule-inputs">
+              <input type="date" id="settings-daily-quest-date" aria-label="Next Daily Quest date" style="background:var(--panel-raised); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; color:var(--text); font-family:inherit; font-size:0.88rem;">
+              <input type="time" id="settings-daily-quest-time" aria-label="Daily Quest time" style="background:var(--panel-raised); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; color:var(--text); font-family:inherit; font-size:0.88rem;">
+            </div>
           </div>
           <div class="setting-row" style="justify-content:flex-end; gap:10px;">
             <div class="save-confirm" id="daily-quest-save-confirm">Saved</div>
