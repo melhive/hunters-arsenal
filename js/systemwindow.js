@@ -100,9 +100,6 @@ const SystemWindow = (function () {
 
     requestAnimationFrame(() => requestAnimationFrame(() => {
       box.classList.add('sw-show');
-      if (opts.type === 'levelup' || opts.type === 'rankup') {
-        if (typeof Effects !== 'undefined') Effects.celebrateTop();
-      }
     }));
   }
 

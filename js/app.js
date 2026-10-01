@@ -264,7 +264,7 @@
   }
   function initTheme() {
     const saved = Store.getSettings().theme;
-    const theme = saved === 'hunter' || !COLOR_THEMES.includes(saved) ? 'system-blue' : saved;
+    const theme = COLOR_THEMES.includes(saved) ? saved : saved === 'hunter' ? 'system-blue' : 'azure';
     if (saved !== theme) {
       const settings = Store.getSettings();
       settings.theme = theme;
