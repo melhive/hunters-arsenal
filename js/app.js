@@ -374,7 +374,7 @@
           lines: [`This habit ranked up to ${rank.name}.`]
         });
       }
-      handlePerfectDayCheck(dateISO);
+      handlePerfectDayCheck(dateISO, true);
       refreshDailyQuestNotice();
     } else if (!nowDone) {
       if (typeof Sound !== 'undefined') Sound.uncheck();
@@ -390,7 +390,7 @@
     return nowDone;
   }
 
-  function handlePerfectDayCheck(dateISO) {
+  function handlePerfectDayCheck(dateISO, deferNoticeRefresh = false) {
     const habits = Store.getActiveHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
@@ -407,7 +407,7 @@
         cycle.status = 'complete';
         cycle.finishedAt = new Date().toISOString();
         Store.setDailyQuestCycle(cycle);
-        refreshDailyQuestNotice();
+        if (!deferNoticeRefresh) refreshDailyQuestNotice();
       }
       return;
     }
@@ -444,7 +444,7 @@
       });
       if (typeof Sound !== 'undefined') Sound.perfectDay();
     }
-    if (questAccepted && thisCycle) refreshDailyQuestNotice();
+    if (questAccepted && thisCycle && !deferNoticeRefresh) refreshDailyQuestNotice();
   }
 
   function checkAchievements() {
@@ -484,14 +484,40 @@
   let dqCountdownStop = null;
   let dqEntranceTimers = [];
   let dqScheduleTimer = null;
+  let dqCloseTimer = null;
   let dqBootRecoveryReady = false;
 
   function populateDailyQuestList(scheduled, active, dateISO, locked) {
     const list = $('#dq-habit-list');
+    const existingRows = Array.from(list.children);
+    const canReuseRows = list.dataset.date === dateISO
+      && list.dataset.active === String(active)
+      && existingRows.length === scheduled.length
+      && existingRows.every((row, index) => row.dataset.habitId === scheduled[index].id);
+
+    if (canReuseRows) {
+      scheduled.forEach((h, index) => {
+        const done = Store.isDone(h.id, dateISO);
+        const row = existingRows[index];
+        row.classList.toggle('done', done);
+        const toggle = row.querySelector('.dq-task-check');
+        if (toggle) {
+          toggle.setAttribute('aria-label', locked ? `Completed ${h.name}` : done ? `Mark ${h.name} incomplete` : `Complete ${h.name}`);
+          toggle.setAttribute('aria-pressed', String(done));
+          toggle.disabled = locked;
+          toggle.textContent = done ? '✓' : '';
+        }
+      });
+      return;
+    }
+
     list.innerHTML = '';
+    list.dataset.date = dateISO;
+    list.dataset.active = String(active);
     scheduled.forEach(h => {
       const done = Store.isDone(h.id, dateISO);
       const row = el('div', 'dq-habit-row' + (done ? ' done' : ''));
+      row.dataset.habitId = h.id;
       const mark = active
         ? `<button class="dq-task-check" aria-label="${locked ? 'Completed ' + escapeHTML(h.name) : done ? 'Mark ' + escapeHTML(h.name) + ' incomplete' : 'Complete ' + escapeHTML(h.name)}" aria-pressed="${done}"${locked ? ' disabled' : ''}>${done ? '✓' : ''}</button>`
         : '';
@@ -501,7 +527,6 @@
         if (dateISO !== Store.todayISO()) return;
         performToggle(h.id, dateISO);
         renderDashboard();
-        refreshDailyQuestNotice();
       });
       list.appendChild(row);
     });
@@ -531,14 +556,16 @@
 
   function closeDailyQuestNotice(exitState) {
     const notice = $('#daily-quest-notice');
-    if (!notice) return;
+    if (!notice || notice.classList.contains('closing')) return;
     notice.classList.add('closing');
     if (exitState === 'decline') notice.classList.add('decline-exit');
     notice.setAttribute('aria-hidden', 'true');
+    notice.classList.remove('open');
     stopDailyQuestEntrance();
     if (dqCountdownStop) { dqCountdownStop(); dqCountdownStop = null; }
-    window.setTimeout(() => {
-      notice.classList.remove('open', 'closing', 'active', 'complete', 'available', 'decline-exit');
+    dqCloseTimer = window.setTimeout(() => {
+      dqCloseTimer = null;
+      notice.classList.remove('closing', 'active', 'complete', 'available', 'decline-exit');
       updateDailyQuestEntry(Store.getDailyQuestCycle(), true);
     }, 440);
   }
@@ -557,12 +584,16 @@
     }
     entry.textContent = label;
     entry.dataset.state = status;
-    entry.hidden = !show || state.view !== 'dashboard';
-    entry.style.visibility = entry.hidden ? 'hidden' : 'visible';
+    entry.hidden = state.view !== 'dashboard';
+    entry.style.visibility = show && state.view === 'dashboard' ? 'visible' : 'hidden';
   }
 
   function openDailyQuestNotice(cycle, entrance) {
     const notice = $('#daily-quest-notice');
+    if (dqCloseTimer !== null) {
+      window.clearTimeout(dqCloseTimer);
+      dqCloseTimer = null;
+    }
     const status = cycle.status === 'declined' ? 'available' : cycle.status;
     notice.classList.remove('closing', 'decline-exit', 'accepted-pulse');
     notice.classList.add('open');
@@ -600,9 +631,11 @@
 
   function refreshDailyQuestNotice() {
     const cycle = Store.getDailyQuestCycle();
-    updateDailyQuestEntry(cycle, !$('#daily-quest-notice').classList.contains('open'));
+    const notice = $('#daily-quest-notice');
+    const closing = notice.classList.contains('closing');
+    updateDailyQuestEntry(cycle, !notice.classList.contains('open') && !closing);
     if (!cycle || !['available', 'declined', 'active', 'complete'].includes(cycle.status)) return;
-    if ($('#daily-quest-notice').classList.contains('open')) openDailyQuestNotice(cycle, false);
+    if (notice.classList.contains('open') && !closing) openDailyQuestNotice(cycle, false);
     updateDailyQuestSettings();
   }
 

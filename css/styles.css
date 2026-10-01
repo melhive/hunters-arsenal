@@ -245,7 +245,7 @@ body {
   background-attachment: fixed;
 }
 @media (max-width: 600px) {
-  body { background-position: center top, center calc(-6vh - 241px); }
+  body { background-position: center top, center calc(-6vh - 151px); }
 }
 #command-grid {
   position:fixed;inset:0;z-index:0;isolation:isolate;overflow:hidden;pointer-events:none;
