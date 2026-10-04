@@ -13,10 +13,8 @@
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const MAX_FREEZES = 3;
-  const PERFECT_DAY_BASE_BONUS = 15;
   const PENALTY_PER_MISS = 8;
   const PENALTY_CAP = 30; // per day, however many habits were missed
-  const QUEST_CLEAR_BONUS = 25; // extra XP for accepting the Daily Quest and clearing it
   const QUEST_FAIL_MULTIPLIER = 2; // penalty multiplier when a quest was accepted but failed
 
   const ACHIEVEMENTS = [
@@ -24,7 +22,7 @@
     { id: 'week-warrior', name: 'Week Warrior', desc: '7 perfect days total', icon: 'ic-shield', check: ctx => ctx.perfectDaysCount >= 7 },
     { id: 'centurion', name: 'Centurion', desc: '100 total completions', icon: 'ic-trophy', check: ctx => ctx.totalCompletions >= 100 },
     { id: 'iron-will', name: 'Iron Will', desc: '30-day streak on one habit', icon: 'ic-star', check: ctx => ctx.maxLongestStreak >= 30 },
-    { id: 'rising-legend', name: 'Rising Legend', desc: 'Reach Elite rank on a habit', icon: 'ic-trophy', check: ctx => ctx.hasEliteRank },
+    { id: 'rising-legend', name: 'Rising Legend', desc: 'Reach Ascendant mastery on a habit', icon: 'ic-trophy', check: ctx => ctx.hasAscendantMastery },
     { id: 'renaissance', name: 'Renaissance Hunter', desc: 'Earn XP in all 5 stats', icon: 'ic-star', check: ctx => ctx.statsCovered >= 5 },
     { id: 'perfectionist', name: 'Perfectionist', desc: '10 perfect days total', icon: 'ic-flame', check: ctx => ctx.perfectDaysCount >= 10 },
     { id: 'guardian', name: 'Guardian', desc: 'Use a streak freeze', icon: 'ic-shield', check: ctx => ctx.frozenDatesCount >= 1 },
@@ -315,17 +313,38 @@
   }
 
   /* ---------- Shared gamification snapshot ---------- */
+  function currentHunterProgress() {
+    const xp = Gamify.totalXP(
+      Store.getLogs(), Store.getPerfectDays(), Store.getPenalties(), Store.getQuestBonuses()
+    );
+    return { xp, level: Gamify.levelFromXP(xp), rank: Gamify.rankForXP(xp) };
+  }
+
+  function renderHunterProgress() {
+    const progress = currentHunterProgress();
+    const levelEl = $('#hero-level');
+    const xpLabel = $('#hero-xp-label');
+    const xpFill = $('#hero-xp-fill');
+    const rankBadge = $('#hero-rank-badge');
+    if (levelEl) levelEl.textContent = progress.level.level;
+    if (xpLabel) xpLabel.textContent = progress.level.level === Gamify.MAX_LEVEL
+      ? 'MAX LEVEL'
+      : `${progress.level.into} / ${progress.level.needed} XP`;
+    if (xpFill) xpFill.style.width = Math.round(progress.level.progress * 100) + '%';
+    if (rankBadge) {
+      rankBadge.textContent = progress.rank.label;
+      rankBadge.style.setProperty('--rank-color', progress.rank.color);
+      rankBadge.style.setProperty('--rank-bg', hexAlpha(progress.rank.color, 0.14));
+    }
+    return progress;
+  }
+
   function snapshot(habitId) {
-    const habits = Store.getHabits();
     const logs = Store.getLogs();
-    const perfectDays = Store.getPerfectDays();
-    const penalties = Store.getPenalties();
-    const xp = Gamify.totalXP(logs, perfectDays, penalties);
-    const level = Gamify.levelFromXP(xp).level;
-    const hunterRank = Gamify.rankForLevel(level).id;
-    const habit = habits.find(h => h.id === habitId);
-    const habitRank = habit ? Gamify.rankFor(Gamify.countCompletions(habit.id, logs)) : null;
-    return { xp, level, hunterRank, habitRankName: habitRank ? habitRank.name : null };
+    const progression = currentHunterProgress();
+    const habit = Store.getHabits().find(h => h.id === habitId);
+    const habitRank = habit ? Gamify.rankFor(Gamify.masteryXPForHabit(habit.id, logs)) : null;
+    return { xp: progression.xp, level: progression.level.level, hunterRank: progression.rank.id, habitRankName: habitRank ? habitRank.name : null };
   }
 
   // The single entry point for marking a habit done/undone anywhere in the app.
@@ -333,12 +352,12 @@
   // perfect-day combo, streak freezes earned, and achievement unlocks — all
   // via queued System Window popups (+ sound, when enabled).
   function performToggle(habitId, dateISO) {
+    if (dateISO !== Store.todayISO()) return false;
     const before = snapshot(habitId);
-    const wasDone = Store.isDone(habitId, dateISO);
-    // XP is snapshotted using the rank BEFORE this completion — see
-    // Gamify.xpForCompletion's comment on why this must never be recomputed later.
-    const xpValue = wasDone ? undefined : Gamify.xpForCompletion(before.level);
-    const nowDone = Store.toggle(habitId, dateISO, xpValue);
+    const result = Store.toggleHabit(habitId, dateISO);
+    if (result.ignored) return false;
+    const nowDone = result.done;
+    if (state.view === 'dashboard') renderHunterProgress();
 
     const habits = Store.getHabits();
     const logs = Store.getLogs();
@@ -354,7 +373,7 @@
         SystemWindow.show({
           type: 'rankup', icon: 'ic-trophy',
           title: name ? `RANK UP, ${escapeHTML(name)}! \u2192 ${rankInfo.label}` : `RANK UP! \u2192 ${rankInfo.label}`,
-          lines: [`You are now ${rankInfo.label}. Every quest is worth more XP.`]
+          lines: [`You are now ${rankInfo.label}.`]
         });
         if (typeof Sound !== 'undefined') Sound.rankUp();
       } else if (after.level > before.level) {
@@ -368,20 +387,31 @@
       }
 
       if (after.habitRankName && after.habitRankName !== before.habitRankName) {
-        const rank = Gamify.rankFor(Gamify.countCompletions(habit.id, logs));
+        const rank = Gamify.rankFor(Gamify.masteryXPForHabit(habit.id, logs));
         SystemWindow.show({
           type: 'rankup', icon: rank.icon, title: `${escapeHTML(habit.name)}: ${rank.name}`,
           lines: [`This habit ranked up to ${rank.name}.`]
         });
       }
       handlePerfectDayCheck(dateISO, true);
+      if (state.view === 'dashboard') renderHunterProgress();
       refreshDailyQuestNotice();
     } else if (!nowDone) {
       if (typeof Sound !== 'undefined') Sound.uncheck();
-      // Unchecking might undo a day that was previously marked perfect.
+      // Unchecking may undo both the perfect-day marker and a completed quest.
       const perfectDays = Store.getPerfectDays();
-      if (perfectDays[dateISO] !== undefined && !Gamify.isPerfectDay(Store.getActiveHabits(), logs, dateISO)) {
+      const stillPerfect = Gamify.isPerfectDay(Store.getActiveHabits(), logs, dateISO);
+      if (perfectDays[dateISO] !== undefined && !stillPerfect) {
         Store.clearPerfectDay(dateISO);
+      }
+      const cycle = Store.getDailyQuestCycle();
+      if (!stillPerfect && cycle && cycle.date === dateISO && cycle.status === 'complete') {
+        Store.removeQuestBonus(dateISO);
+        cycle.status = 'active';
+        cycle.bonusAwarded = false;
+        delete cycle.finishedAt;
+        Store.setDailyQuestCycle(cycle);
+        if (state.view === 'dashboard') renderHunterProgress();
       }
       refreshDailyQuestNotice();
     }
@@ -391,6 +421,7 @@
   }
 
   function handlePerfectDayCheck(dateISO, deferNoticeRefresh = false) {
+    if (dateISO !== Store.todayISO()) return false;
     const habits = Store.getActiveHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
@@ -401,8 +432,8 @@
     const thisCycle = cycle && cycle.date === dateISO && ['active', 'accepted-transition'].includes(cycle.status);
     if (alreadyRecorded) {
       if (questAccepted && thisCycle && !cycle.bonusAwarded) {
-        const total = perfectDays[dateISO] + QUEST_CLEAR_BONUS;
-        Store.setPerfectDay(dateISO, total);
+        Store.awardQuestBonus(dateISO);
+        if (state.view === 'dashboard') renderHunterProgress();
         cycle.bonusAwarded = true;
         cycle.status = 'complete';
         cycle.finishedAt = new Date().toISOString();
@@ -414,9 +445,10 @@
 
     const frozenDates = Store.getFrozenDates();
     const streak = Gamify.perfectDayStreak(habits, logs, frozenDates, { ...perfectDays, [dateISO]: 1 }, Store.todayISO());
-    const bonus = PERFECT_DAY_BASE_BONUS + Math.min(streak, 10) * 5 + (questAccepted ? QUEST_CLEAR_BONUS : 0);
-    Store.setPerfectDay(dateISO, bonus);
+    Store.setPerfectDay(dateISO, true);
     if (questAccepted && thisCycle) {
+      Store.awardQuestBonus(dateISO);
+      if (state.view === 'dashboard') renderHunterProgress();
       cycle.bonusAwarded = true;
       cycle.status = 'complete';
       cycle.finishedAt = new Date().toISOString();
@@ -436,7 +468,7 @@
     if (questAccepted) {
       if (typeof Sound !== 'undefined') Sound.rankUp();
     } else {
-      const lines = [`Every scheduled habit complete. +${bonus} bonus XP.`, `Combo streak: ${streak} day${streak === 1 ? '' : 's'}.`];
+      const lines = [`Every scheduled habit complete.`, `Combo streak: ${streak} day${streak === 1 ? '' : 's'}.`];
       if (freezeAwarded) lines.push(`+1 Streak Freeze earned! (${Store.getFreezeCount()}/${MAX_FREEZES})`);
       SystemWindow.show({
         type: 'rankup', icon: 'ic-flame', title: name ? `PERFECT DAY, ${escapeHTML(name)}!` : 'PERFECT DAY!',
@@ -451,20 +483,20 @@
     const habits = Store.getHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
-    const penalties = Store.getPenalties();
     const unlocked = Store.getAchievements();
 
-    const totalCompletions = Object.values(logs).reduce((s, day) => s + Object.keys(day).length, 0);
+    const totalCompletions = Object.values(logs).reduce((s, day) => s + Object.values(day).filter(Gamify.isCompletedEntry).length, 0);
     const perfectDaysCount = Object.keys(perfectDays).length;
     const maxLongestStreak = habits.reduce((max, h) => Math.max(max, Gamify.longestStreak(h, logs)), 0);
-    const hasEliteRank = habits.some(h => Gamify.countCompletions(h.id, logs) >= 100);
+    const trackedHabitIds = new Set([...habits.map(h => h.id), ...Object.values(logs).flatMap(day => Object.keys(day))]);
+    const hasAscendantMastery = [...trackedHabitIds].some(id => Gamify.masteryXPForHabit(id, logs) >= Gamify.RANKS[5].min);
     const statTotals = Gamify.statTotals(logs, habits);
     const statsCovered = Object.values(statTotals).filter(v => v > 0).length;
     const frozenDatesCount = Store.getFrozenDates().length;
-    const currentXP = Gamify.totalXP(logs, perfectDays, penalties);
-    const hunterRank = Gamify.rankForLevel(Gamify.levelFromXP(currentXP).level).id;
+    const progression = currentHunterProgress();
+    const hunterRank = progression.rank.id;
 
-    const ctx = { totalCompletions, perfectDaysCount, maxLongestStreak, hasEliteRank, statsCovered, frozenDatesCount, hunterRank };
+    const ctx = { totalCompletions, perfectDaysCount, maxLongestStreak, hasAscendantMastery, statsCovered, frozenDatesCount, hunterRank };
 
     ACHIEVEMENTS.forEach(a => {
       if (unlocked.includes(a.id)) return;
@@ -764,7 +796,7 @@
 
   function finishDailyQuest(dateISO, status) {
     const cycle = Store.getDailyQuestCycle();
-    if (!cycle || cycle.date !== dateISO || !['active', 'available'].includes(cycle.status)) return;
+    if (!cycle || cycle.date !== dateISO || cycle.status !== 'active') return;
     cycle.status = status;
     cycle.finishedAt = new Date().toISOString();
     Store.setDailyQuestCycle(cycle);
@@ -874,34 +906,44 @@
     const today = Store.todayISO();
     const yesterday = addDays(today, -1);
     const cycle = Store.getDailyQuestCycle();
+    const choice = Store.getDailyQuestChoice(yesterday);
+    // Newly created (including first-run default) habits were not missable yesterday.
+    const yesterdayHabits = Store.getActiveHabits().filter(h => !h.createdAt || h.createdAt <= yesterday);
+
+    // An overdue scheduled/available quest has not started. Leave it available
+    // for the existing delayed notice instead of treating missed habits as a failure.
+    if (cycle && cycle.date === yesterday
+        && ['scheduled', 'available', 'accepted-transition'].includes(cycle.status)
+        && choice !== 'declined') return;
+
     if (cycle && cycle.date === yesterday && cycle.status === 'active') {
-      const yesterdayHabits = getApplicableHabits(yesterday);
-      const yesterdayMissed = yesterdayHabits.filter(h => !Store.isDone(h.id, yesterday));
-      if (yesterdayHabits.length && yesterdayMissed.length) finishDailyQuest(yesterday, 'failed');
+      const scheduledQuestHabits = yesterdayHabits.filter(h => Gamify.isScheduledForDate(h, yesterday));
+      const yesterdayMissed = scheduledQuestHabits.filter(h => !Store.isDone(h.id, yesterday));
+      if (scheduledQuestHabits.length && yesterdayMissed.length) finishDailyQuest(yesterday, 'failed');
     }
     if (settings.penaltiesEnabled === false) return;
 
     if (Store.getPenaltyProcessed().includes(yesterday)) return;
     Store.markPenaltyProcessed(yesterday); // only ever evaluate a given date once
 
-    const habits = Store.getActiveHabits();
     const logs = Store.getLogs();
-    const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, yesterday));
+    const scheduled = yesterdayHabits.filter(h => Gamify.isScheduledForDate(h, yesterday));
     if (scheduled.length === 0) return;
     if (Store.getFrozenDates().includes(yesterday)) return;
 
     const missed = scheduled.filter(h => !Store.isDone(h.id, yesterday));
     if (missed.length === 0) return;
 
-    const questAccepted = Store.getDailyQuestChoice(yesterday) === 'accepted';
+    const failedCycle = Store.getDailyQuestCycle();
+    const questFailed = failedCycle && failedCycle.date === yesterday
+      && failedCycle.status === 'failed' && choice === 'accepted';
     const baseAmount = Math.min(missed.length * PENALTY_PER_MISS, PENALTY_CAP);
-    const amount = questAccepted ? baseAmount * QUEST_FAIL_MULTIPLIER : baseAmount;
+    const amount = questFailed ? baseAmount * QUEST_FAIL_MULTIPLIER : baseAmount;
     Store.setPenalty(yesterday, amount);
-    if (questAccepted) finishDailyQuest(yesterday, 'failed');
 
     const name = hunterName();
     setTimeout(() => {
-      if (questAccepted) {
+      if (questFailed) {
         SystemWindow.show({
           type: 'quest-failed', big: true, icon: 'ic-ban',
           title: name ? `QUEST FAILED, ${escapeHTML(name)}!` : 'QUEST FAILED!',
@@ -1044,28 +1086,18 @@
     const allHabits = Store.getHabits();
     const logs = Store.getLogs();
     const perfectDays = Store.getPerfectDays();
-    const penalties = Store.getPenalties();
     renderLifeClockMini();
     const scheduled = habits.filter(h => Gamify.isScheduledForDate(h, today));
 
     const doneCount = scheduled.filter(h => Store.isDone(h.id, today)).length;
     updateQuestRing(doneCount, scheduled.length);
 
-    const xp = Gamify.totalXP(logs, perfectDays, penalties);
-    const lvl = Gamify.levelFromXP(xp);
-    const hunterRank = Gamify.rankForLevel(lvl.level);
-    $('#hero-level').textContent = lvl.level;
-    $('#hero-xp-label').textContent = `${lvl.into} / ${lvl.needed} XP`;
-    $('#hero-xp-fill').style.width = Math.round(lvl.progress * 100) + '%';
-    const rankBadge = $('#hero-rank-badge');
-    if (rankBadge) {
-      rankBadge.textContent = hunterRank.label;
-      rankBadge.style.setProperty('--rank-color', hunterRank.color);
-      rankBadge.style.setProperty('--rank-bg', hexAlpha(hunterRank.color, 0.14));
-    }
+    const progression = renderHunterProgress();
+    const lvl = progression.level;
+    const hunterRank = progression.rank;
 
     const statTotalsNow = Gamify.statTotals(logs, allHabits);
-    const cls = Gamify.currentClass(statTotalsNow);
+    const cls = Gamify.currentClass(statTotalsNow, Gamify.primaryAttribute(logs, allHabits));
     const classBadge = $('#hero-class-badge');
     if (classBadge) {
       if (cls) { classBadge.style.display = 'inline-flex'; classBadge.textContent = 'Class: ' + cls.name; }
@@ -1097,7 +1129,7 @@
 
     scheduled.forEach(h => {
       const done = Store.isDone(h.id, today);
-      const rank = Gamify.rankFor(Gamify.countCompletions(h.id, logs));
+      const rank = Gamify.rankFor(Gamify.masteryXPForHabit(h.id, logs));
       const streak = Gamify.currentStreak(h, logs, today);
       const xpValue = Gamify.xpForCompletion(lvl.level);
       const item = el('div', 'habit-item bracket-card' + (done ? ' done' : ''));
@@ -1123,7 +1155,10 @@
       checkboxEl.addEventListener('click', () => {
         if (!done) {
           Effects.celebrateCheck(checkboxEl, item);
-          setTimeout(() => { performToggle(h.id, today); renderDashboard(); }, 200);
+          performToggle(h.id, today);
+          // Keep the existing check animation visible; the reward and XP bar
+          // have already updated synchronously in performToggle.
+          setTimeout(renderDashboard, 200);
         } else {
           performToggle(h.id, today);
           renderDashboard();
@@ -1301,13 +1336,21 @@
           td.innerHTML = '<span style="color:var(--text-faint)">—</span>';
         } else {
           const done = Store.isDone(h.id, dISO);
-          const btn = el('button', 'day-cell-btn' + (done ? ' done' : '') + (isFuture ? ' future' : ''));
+          const editable = dISO === today;
+          const btn = el(editable || isFuture ? 'button' : 'span', 'day-cell-btn' + (done ? ' done' : '') + (isFuture ? ' future' : ''));
           btn.innerHTML = checkboxGlyph();
-          btn.disabled = isFuture;
-          btn.addEventListener('click', () => {
+          if (isFuture) btn.disabled = true;
+          else if (!editable) {
+            btn.style.cursor = 'default';
+            btn.style.display = 'inline-flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+          }
+          if (editable) btn.addEventListener('click', () => {
             if (!done) {
               Effects.celebrateCheck(btn, null);
-              setTimeout(() => { performToggle(h.id, dISO); renderHistory(); }, 200);
+              performToggle(h.id, dISO);
+              setTimeout(renderHistory, 200);
             } else {
               performToggle(h.id, dISO);
               renderHistory();
@@ -1331,6 +1374,7 @@
     list.innerHTML = '';
     const today = Store.todayISO();
     const isFuture = dISO > today;
+    const isToday = dISO === today;
 
     if (habits.length === 0) {
       list.appendChild(emptyState('ic-moon', 'Nothing scheduled', 'No habits were scheduled on this day.'));
@@ -1338,17 +1382,19 @@
     habits.forEach(h => {
       const done = Store.isDone(h.id, dISO);
       const item = el('div', 'habit-item' + (done ? ' done' : ''));
-      item.innerHTML = `
-        <button class="habit-checkbox" ${isFuture ? 'disabled' : ''}>${checkboxGlyph()}</button>
+      const completionControl = isToday || isFuture
+        ? `<button class="habit-checkbox" ${isFuture ? 'disabled' : ''}>${checkboxGlyph()}</button>`
+        : `<span class="habit-checkbox" style="cursor:default" aria-label="Historical completion, read only">${checkboxGlyph()}</span>`;
+      item.innerHTML = `${completionControl}
         <div class="habit-icon" style="background:${hexAlpha(h.color, 0.16)}; color:${h.color}">${iconSVG(h.icon)}</div>
-        <div class="habit-main"><div class="habit-name">${escapeHTML(h.name)}</div></div>
-      `;
-      if (!isFuture) {
+        <div class="habit-main"><div class="habit-name">${escapeHTML(h.name)}</div></div>`;
+      if (isToday) {
         const cbEl = item.querySelector('.habit-checkbox');
         cbEl.addEventListener('click', () => {
           if (!done) {
             Effects.celebrateCheck(cbEl, item);
-            setTimeout(() => { performToggle(h.id, dISO); openDayModal(dISO); renderHistory(); }, 200);
+            performToggle(h.id, dISO);
+            setTimeout(() => { openDayModal(dISO); renderHistory(); }, 200);
           } else {
             performToggle(h.id, dISO);
             openDayModal(dISO);
@@ -1365,14 +1411,12 @@
   function renderStats() {
     const habits = Store.getActiveHabits();
     const logs = Store.getLogs();
-    const perfectDays = Store.getPerfectDays();
-    const penalties = Store.getPenalties();
     const today = Store.todayISO();
 
-    const totalCompletions = Object.values(logs).reduce((s, day) => s + Object.keys(day).length, 0);
-    const xp = Gamify.totalXP(logs, perfectDays, penalties);
+    const totalCompletions = Object.values(logs).reduce((s, day) => s + Object.values(day).filter(Gamify.isCompletedEntry).length, 0);
+    const xp = currentHunterProgress().xp;
     const bestStreak = habits.reduce((max, h) => Math.max(max, Gamify.currentStreak(h, logs, today)), 0);
-    const activeDays = Object.keys(logs).filter(d => Object.keys(logs[d]).length > 0).length;
+    const activeDays = Object.keys(logs).filter(d => Object.values(logs[d]).some(Gamify.isCompletedEntry)).length;
 
     const tiles = $('#stats-tiles');
     tiles.innerHTML = '';
@@ -1402,7 +1446,7 @@
       masteryList.appendChild(emptyState('ic-bar-chart', 'No data yet', 'Add and complete habits to see stats here.'));
     }
     habits.forEach(h => {
-      const rank = Gamify.rankFor(Gamify.countCompletions(h.id, logs));
+      const rank = Gamify.rankFor(Gamify.masteryXPForHabit(h.id, logs));
       const row = el('div', 'habit-mastery-row');
       row.innerHTML = `
         <div class="habit-icon" style="background:${hexAlpha(h.color, 0.16)}; color:${h.color}; width:32px; height:32px;">${iconSVG(h.icon)}</div>
@@ -1483,11 +1527,9 @@
   function renderProfile() {
     const habits = Store.getHabits();
     const logs = Store.getLogs();
-    const perfectDays = Store.getPerfectDays();
-    const penalties = Store.getPenalties();
-    const xp = Gamify.totalXP(logs, perfectDays, penalties);
-    const lvl = Gamify.levelFromXP(xp);
-    const hunterRank = Gamify.rankForLevel(lvl.level);
+    const progression = currentHunterProgress();
+    const lvl = progression.level;
+    const hunterRank = progression.rank;
     const name = hunterName();
     const nameLine = $('#hunter-name-line');
     const subline = $('#hunter-subline');
@@ -1511,7 +1553,7 @@
     $('#profile-title').textContent = equipped ? `"${equipped.name}"` : 'No title equipped yet';
 
     const totals = Gamify.statTotals(logs, habits);
-    const cls = Gamify.currentClass(totals);
+    const cls = Gamify.currentClass(totals, Gamify.primaryAttribute(logs, habits));
     const classBadge = $('#profile-class-badge');
     if (classBadge) {
       if (cls) {
@@ -1526,11 +1568,12 @@
     barsEl.innerHTML = '';
     Gamify.STATS.forEach(s => {
       const val = totals[s.id] || 0;
+      const attributeClass = Gamify.classForAttribute(s.id, val);
       const row = el('div', 'stat-row');
       row.innerHTML = `
         <div class="stat-icon-wrap">${iconSVG(s.icon)}</div>
         <div class="stat-row-main">
-          <div class="stat-row-top"><b>${s.label}</b><span class="stat-val">${val} XP</span></div>
+          <div class="stat-row-top"><b>${s.label}</b><span class="stat-val">${attributeClass ? attributeClass.name : 'NO CLASS'} · ${val} XP</span></div>
           <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round((val / maxVal) * 100)}%"></div></div>
         </div>
       `;
@@ -1675,7 +1718,10 @@
       Store.updateHabit(state.editingHabitId, payload);
       showToast('Habit updated');
     } else {
-      Store.addHabit(payload);
+      if (!Store.addHabit(payload)) {
+        showToast(`Maximum of ${Gamify.MAX_HABITS} active habits reached`);
+        return;
+      }
       showToast('Habit added to your arsenal');
     }
     closeModal('#habit-modal');
@@ -1697,13 +1743,16 @@
     const id = state.editingHabitId;
     Store.archiveHabit(id);
     closeModal('#habit-modal');
-    showToast('Habit archived', { label: 'Undo', onClick: () => { Store.restoreHabit(id); refreshAllViews(); } });
+    showToast('Habit archived', { label: 'Undo', onClick: () => {
+      if (!Store.restoreHabit(id)) showToast(`Maximum of ${Gamify.MAX_HABITS} active habits reached`);
+      else refreshAllViews();
+    } });
     refreshAllViews();
   }
 
   function permanentlyDeleteCurrentHabit() {
     if (!state.editingHabitId) return;
-    if (!confirm('Permanently delete this habit and all of its history? This can\'t be undone.')) return;
+    if (!confirm('Permanently delete this habit? Its earned progression will be kept.')) return;
     Store.permanentlyDeleteHabit(state.editingHabitId);
     closeModal('#habit-modal');
     showToast('Habit permanently deleted');
@@ -1729,12 +1778,15 @@
         <button class="icon-btn" data-action="delete" title="Delete permanently">${iconSVG('ic-ban')}</button>
       `;
       row.querySelector('[data-action="restore"]').addEventListener('click', () => {
-        Store.restoreHabit(h.id);
+        if (!Store.restoreHabit(h.id)) {
+          showToast(`Maximum of ${Gamify.MAX_HABITS} active habits reached`);
+          return;
+        }
         showToast('Habit restored');
         refreshAllViews();
       });
       row.querySelector('[data-action="delete"]').addEventListener('click', () => {
-        if (!confirm(`Permanently delete "${h.name}" and all of its history? This can't be undone.`)) return;
+        if (!confirm(`Permanently delete "${h.name}"? Its earned progression will be kept.`)) return;
         Store.permanentlyDeleteHabit(h.id);
         showToast('Habit permanently deleted');
         refreshAllViews();

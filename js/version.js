@@ -8,9 +8,16 @@
     the first time a user opens the app after an update.
 */
 
-self.APP_VERSION = '2.6.4';
+self.APP_VERSION = '2.6.5';
 
 self.CHANGELOG = [
+  {
+    version: '2.6.5',
+    date: '2026-10-03',
+    changes: [
+      'Corrected Hunter XP rewards and immediate progression updates.'
+    ]
+  },
   {
     version: '2.6.4',
     date: '2026-09-30',

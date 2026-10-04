@@ -8,6 +8,7 @@ const KEYS = {
   freezes: 'harsenal_freezes',             // number of streak-freeze tokens available
   frozenDates: 'harsenal_frozen_dates',    // [ 'YYYY-MM-DD', ... ] dates protected by a freeze
   perfectDays: 'harsenal_perfect_days',    // { 'YYYY-MM-DD': bonusXP }
+  questBonuses: 'harsenal_quest_bonuses',  // { 'YYYY-MM-DD': Hunter XP }
   freezePrompted: 'harsenal_freeze_prompted', // [ 'YYYY-MM-DD', ... ] dates already asked about
   achievements: 'harsenal_achievements',   // [ achievementId, ... ] unlocked
   equippedTitle: 'harsenal_equipped_title', // achievementId or null
@@ -24,9 +25,9 @@ const KEYS = {
 };
 
 const DEFAULT_HABITS = [
-  { id: 'h_water', name: 'Drink water', icon: 'ic-droplet', color: '#58b982', stat: 'VIT', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
-  { id: 'h_read', name: 'Read 20 minutes', icon: 'ic-book', color: '#5b9fd1', stat: 'INT', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
-  { id: 'h_train', name: 'Train', icon: 'ic-dumbbell', color: '#d95c67', stat: 'STR', archived: false, frequency: { type: 'weekdays', days: [1, 2, 3, 4, 5] }, createdAt: todayISO() }
+  { id: 'h_pushups', name: '50 Push-ups', icon: 'ic-dumbbell', color: '#d95c67', stat: 'STR', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
+  { id: 'h_situps', name: '50 Sit-ups', icon: 'ic-dumbbell', color: '#d95c67', stat: 'STR', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() },
+  { id: 'h_run', name: '2 km Run', icon: 'ic-run', color: '#58b982', stat: 'VIT', archived: false, frequency: { type: 'daily' }, createdAt: todayISO() }
 ];
 
 function todayISO(d = new Date()) {
@@ -87,6 +88,7 @@ const Store = {
 
   addHabit(habit) {
     const habits = this.getHabits();
+    if (habits.filter(h => !h.archived).length >= Gamify.MAX_HABITS) return null;
     habit.id = 'h_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     habit.createdAt = todayISO();
     habit.archived = false;
@@ -96,6 +98,8 @@ const Store = {
   },
 
   updateHabit(id, updates) {
+    const existing = this.getHabits().find(h => h.id === id);
+    if (existing && updates.stat && updates.stat !== existing.stat) this.freezeLegacyProgression(id, existing.stat);
     const habits = this.getHabits().map(h => h.id === id ? { ...h, ...updates } : h);
     this.saveHabits(habits);
   },
@@ -105,7 +109,13 @@ const Store = {
   },
 
   restoreHabit(id) {
+    const habits = this.getHabits();
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return false;
+    if (!habit.archived) return true;
+    if (habits.filter(h => !h.archived).length >= Gamify.MAX_HABITS) return false;
     this.updateHabit(id, { archived: false });
+    return true;
   },
 
   // Reorders active habits to match orderedIds (an array of habit ids in the
@@ -124,15 +134,28 @@ const Store = {
     this.saveHabits([...reorderedActive, ...strayActive, ...archived]);
   },
 
-  // Permanently removes a habit AND its logged history. Irreversible —
-  // archiveHabit() is the safe, reversible alternative used by the UI's
-  // default "Archive" action.
+  // Permanently removes the habit definition but keeps reward records so
+  // previously earned Hunter, attribute, and mastery XP remain intact.
   permanentlyDeleteHabit(id) {
     const habits = this.getHabits().filter(h => h.id !== id);
+    const deleted = this.getHabits().find(h => h.id === id);
+    if (deleted) this.freezeLegacyProgression(id, deleted.stat || Gamify.DEFAULT_STAT);
     this.saveHabits(habits);
+  },
+
+  // Materialize legacy entries before a stat change or deletion so their
+  // attribute and mastery history remains attached to the persistent habit ID.
+  freezeLegacyProgression(habitId, assignedStat) {
     const logs = this.getLogs();
-    Object.keys(logs).forEach(date => { delete logs[date][id]; });
-    this.saveLogs(logs);
+    let changed = false;
+    Object.keys(logs).forEach(date => {
+      if (!Object.prototype.hasOwnProperty.call(logs[date], habitId)) return;
+      const entry = logs[date][habitId];
+      if (entry && typeof entry === 'object') return;
+      logs[date][habitId] = Gamify.progressionRecordFromLegacy(entry, assignedStat);
+      changed = true;
+    });
+    if (changed) this.saveLogs(logs);
   },
 
   getLogs() {
@@ -145,22 +168,62 @@ const Store = {
 
   isDone(habitId, dateISO) {
     const logs = this.getLogs();
-    return !!(logs[dateISO] && logs[dateISO][habitId]);
+    return Gamify.isCompletedEntry(logs[dateISO] && logs[dateISO][habitId]);
   },
 
-  // xpValue is snapshotted at the moment of completion (computed by the
-  // caller from the CURRENT hunter rank) so future rank changes never
-  // retroactively rewrite XP already earned. Ignored when un-toggling.
-  toggle(habitId, dateISO, xpValue) {
+  // The one habit reward transaction: completion state and all three earned
+  // progression rewards share one date + persistent habit ID record.
+  toggleHabit(habitId, dateISO) {
+    if (dateISO !== this.todayISO()) {
+      return { done: this.isDone(habitId, dateISO), awarded: false, ignored: true };
+    }
+    const habit = this.getHabits().find(h => h.id === habitId);
+    if (!habit || habit.archived) return { done: false, awarded: false, ignored: true };
     const logs = this.getLogs();
     if (!logs[dateISO]) logs[dateISO] = {};
-    if (logs[dateISO][habitId]) {
-      delete logs[dateISO][habitId];
+    const day = logs[dateISO];
+    const hasEntry = Object.prototype.hasOwnProperty.call(day, habitId);
+    const current = hasEntry
+      ? Gamify.progressionRecordFromLegacy(day[habitId], habit.stat || Gamify.DEFAULT_STAT)
+      : { completed: false, rewarded: false, hunterXP: 0, attributeXP: 0, attribute: habit.stat || Gamify.DEFAULT_STAT, masteryXP: 0 };
+    let awarded = false;
+    if (current.completed) {
+      current.completed = false;
+      current.rewarded = false;
+      current.hunterXP = 0;
+      current.attributeXP = 0;
+      current.masteryXP = 0;
+      delete current.awarded;
+      delete current.capped;
     } else {
-      logs[dateISO][habitId] = xpValue && xpValue > 0 ? xpValue : 10;
+      current.completed = true;
+      const xpAwardedCompletions = Object.entries(day)
+        .filter(([id, value]) => id !== habitId && Gamify.xpValueOf(value) > 0).length;
+      current.rewarded = true;
+      if (xpAwardedCompletions < Gamify.MAX_HABITS) {
+        current.hunterXP = Gamify.BASE_XP;
+        current.attributeXP = Gamify.PROGRESSION.attributeXPPerHabit;
+        current.attribute = habit.stat || Gamify.DEFAULT_STAT;
+        current.masteryXP = Gamify.PROGRESSION.masteryXPPerHabit;
+        current.awarded = new Date().toISOString();
+        delete current.capped;
+        awarded = true;
+      } else {
+        current.hunterXP = 0;
+        current.attributeXP = 0;
+        current.masteryXP = 0;
+        current.capped = true;
+      }
     }
+    day[habitId] = current;
     this.saveLogs(logs);
-    return !!logs[dateISO][habitId];
+    return { done: current.completed, awarded, record: current, habit };
+  },
+
+  // Compatibility wrapper for any older in-app caller.
+  toggle(habitId, dateISO) {
+    const result = this.toggleHabit(habitId, dateISO);
+    return result.ignored ? false : result.done;
   },
 
   getSettings() {
@@ -246,7 +309,17 @@ const Store = {
     writeJSON(KEYS.dailyQuestChoices, map);
   },
   getDailyQuestCycle() {
-    return readJSON(KEYS.dailyQuestCycle, null);
+    const cycle = readJSON(KEYS.dailyQuestCycle, null);
+    const choice = cycle && this.getDailyQuestChoice(cycle.date);
+    // A cycle cannot fail before acceptance. Repair only that invalid legacy state.
+    if (cycle && cycle.status === 'failed' && choice !== 'accepted') {
+      const declined = choice === 'declined';
+      cycle.status = declined ? 'available' : 'scheduled';
+      cycle.presented = declined;
+      delete cycle.finishedAt;
+      writeJSON(KEYS.dailyQuestCycle, cycle);
+    }
+    return cycle;
   },
   setDailyQuestCycle(cycle) {
     if (cycle) writeJSON(KEYS.dailyQuestCycle, cycle);
@@ -281,15 +354,46 @@ const Store = {
   getPerfectDays() {
     return readJSON(KEYS.perfectDays, {});
   },
+  getQuestBonuses() {
+    return readJSON(KEYS.questBonuses, {});
+  },
+  awardQuestBonus(dateISO) {
+    if (dateISO !== this.todayISO()) return false;
+    const bonuses = this.getQuestBonuses();
+    if (bonuses[dateISO]) return false;
+    bonuses[dateISO] = Gamify.PROGRESSION.dailyQuestXP;
+    return writeJSON(KEYS.questBonuses, bonuses);
+  },
+  removeQuestBonus(dateISO) {
+    if (dateISO !== this.todayISO()) return false;
+    const bonuses = this.getQuestBonuses();
+    if (!Object.prototype.hasOwnProperty.call(bonuses, dateISO)) return false;
+    delete bonuses[dateISO];
+    return writeJSON(KEYS.questBonuses, bonuses);
+  },
   setPerfectDay(dateISO, bonusXP) {
+    if (dateISO !== this.todayISO()) return false;
     const days = this.getPerfectDays();
     days[dateISO] = bonusXP;
-    writeJSON(KEYS.perfectDays, days);
+    return writeJSON(KEYS.perfectDays, days);
   },
   clearPerfectDay(dateISO) {
+    if (dateISO !== this.todayISO()) return false;
     const days = this.getPerfectDays();
-    delete days[dateISO];
-    writeJSON(KEYS.perfectDays, days);
+    const entry = days[dateISO];
+    const accepted = this.getDailyQuestChoice(dateISO) === 'accepted';
+    const hasSeparateQuestBonus = Object.prototype.hasOwnProperty.call(this.getQuestBonuses(), dateISO);
+    // Older builds folded the accepted quest's +25 into a numeric perfect-day
+    // bonus. Split it before the caller reverses the quest completion.
+    if (typeof entry === 'number' && accepted && !hasSeparateQuestBonus) {
+      const remainder = Math.max(0, entry - Gamify.PROGRESSION.dailyQuestXP);
+      if (remainder > 0) days[dateISO] = remainder;
+      else delete days[dateISO];
+      this.awardQuestBonus(dateISO);
+    } else if (!(typeof entry === 'number' && accepted && hasSeparateQuestBonus)) {
+      delete days[dateISO];
+    }
+    return writeJSON(KEYS.perfectDays, days);
   },
 
   /* ---- Penalties (missed daily quests) ---- */
@@ -338,6 +442,7 @@ const Store = {
       freezes: this.getFreezeCount(),
       frozenDates: this.getFrozenDates(),
       perfectDays: this.getPerfectDays(),
+      questBonuses: this.getQuestBonuses(),
       achievements: this.getAchievements(),
       equippedTitle: this.getEquippedTitle(),
       penalties: this.getPenalties(),
@@ -358,6 +463,7 @@ const Store = {
     if (typeof data.freezes === 'number') this.setFreezeCount(data.freezes);
     if (Array.isArray(data.frozenDates)) writeJSON(KEYS.frozenDates, data.frozenDates);
     if (data.perfectDays) writeJSON(KEYS.perfectDays, data.perfectDays);
+    if (data.questBonuses) writeJSON(KEYS.questBonuses, data.questBonuses);
     if (Array.isArray(data.achievements)) writeJSON(KEYS.achievements, data.achievements);
     if (data.equippedTitle) this.setEquippedTitle(data.equippedTitle);
     if (data.penalties) writeJSON(KEYS.penalties, data.penalties);
